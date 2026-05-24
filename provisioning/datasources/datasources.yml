@@ -8,5 +8,7 @@ datasources:
     orgId: 1
     version: 1
     editable: true
-    # Auth is supplied via DT_TENANT_URL and DT_TOKEN env vars on the plugin
-    # process; no jsonData/secureJsonData fields needed in v0.
+    jsonData:
+      tenantUrl: '${DT_TENANT_URL}'
+    secureJsonData:
+      apiToken: '${DT_TOKEN}'

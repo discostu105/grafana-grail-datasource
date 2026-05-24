@@ -1,36 +1,28 @@
 // Package dynatrace wraps the dtctl SDK with the narrow surface this plugin
-// needs: env-var-based construction and DQL execution.
+// needs: client construction from explicit credentials and DQL execution.
 package dynatrace
 
 import (
 	"context"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/dynatrace-oss/dtctl/sdk/api/query"
 	"github.com/dynatrace-oss/dtctl/sdk/httpclient"
 )
 
-const (
-	EnvTenantURL = "DT_TENANT_URL"
-	EnvToken     = "DT_TOKEN"
-)
-
 type Client struct {
 	handler *query.Handler
 }
 
-// NewFromEnv reads DT_TENANT_URL and DT_TOKEN from the process environment
-// and constructs an authenticated DQL client.
-func NewFromEnv() (*Client, error) {
-	tenantURL := os.Getenv(EnvTenantURL)
-	token := os.Getenv(EnvToken)
+// New constructs an authenticated DQL client from a tenant URL and platform
+// token.
+func New(tenantURL, token string) (*Client, error) {
 	if tenantURL == "" {
-		return nil, fmt.Errorf("%s is not set", EnvTenantURL)
+		return nil, fmt.Errorf("tenant URL is empty")
 	}
 	if token == "" {
-		return nil, fmt.Errorf("%s is not set", EnvToken)
+		return nil, fmt.Errorf("API token is empty")
 	}
 
 	httpClient, err := httpclient.New(tenantURL, httpclient.WithToken(token))

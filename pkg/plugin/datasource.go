@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/discostu105/dynatracegrail/pkg/dynatrace"
@@ -19,20 +20,30 @@ var (
 )
 
 // queryTimeout is the per-query context deadline, covering execute + poll.
-const queryTimeout = 30 * time.Second
-
-// hardcoded v0 timeframe — see project plan, will be replaced by Grafana's
-// query.TimeRange in v1.
-const v0Timeframe = time.Hour
+const queryTimeout = 60 * time.Second
 
 type Datasource struct {
 	dt     *dynatrace.Client
-	envErr error
+	cfgErr error
 }
 
-func NewDatasource(_ context.Context, _ backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
-	c, err := dynatrace.NewFromEnv()
-	return &Datasource{dt: c, envErr: err}, nil
+type instanceJSON struct {
+	TenantURL string `json:"tenantUrl"`
+}
+
+func NewDatasource(_ context.Context, s backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
+	var cfg instanceJSON
+	if len(s.JSONData) > 0 {
+		if err := json.Unmarshal(s.JSONData, &cfg); err != nil {
+			return &Datasource{cfgErr: fmt.Errorf("parsing jsonData: %w", err)}, nil
+		}
+	}
+	token := s.DecryptedSecureJSONData["apiToken"]
+	c, err := dynatrace.New(cfg.TenantURL, token)
+	if err != nil {
+		return &Datasource{cfgErr: err}, nil
+	}
+	return &Datasource{dt: c}, nil
 }
 
 func (d *Datasource) Dispose() {}
@@ -50,8 +61,8 @@ func (d *Datasource) QueryData(ctx context.Context, req *backend.QueryDataReques
 }
 
 func (d *Datasource) query(ctx context.Context, q backend.DataQuery) backend.DataResponse {
-	if d.envErr != nil {
-		return backend.ErrDataResponse(backend.StatusBadRequest, d.envErr.Error())
+	if d.cfgErr != nil {
+		return backend.ErrDataResponse(backend.StatusBadRequest, d.cfgErr.Error())
 	}
 	var qm queryModel
 	if err := json.Unmarshal(q.JSON, &qm); err != nil {
@@ -64,15 +75,16 @@ func (d *Datasource) query(ctx context.Context, q backend.DataQuery) backend.Dat
 	cctx, cancel := context.WithTimeout(ctx, queryTimeout)
 	defer cancel()
 
-	to := time.Now()
-	from := to.Add(-v0Timeframe)
-	dqlResp, err := d.dt.Query(cctx, qm.DqlQuery, from, to)
+	from, to := q.TimeRange.From, q.TimeRange.To
+	dql := substituteMacros(qm.DqlQuery, from, to)
+
+	dqlResp, err := d.dt.Query(cctx, dql, from, to)
 	if err != nil {
 		return backend.ErrDataResponse(backend.StatusInternal, err.Error())
 	}
 
 	records := dqlResp.GetRecords()
-	logRawShape(q.RefID, qm.DqlQuery, records)
+	logRawShape(q.RefID, dql, records)
 
 	frames, err := recordsToFrames(q.RefID, records)
 	if err != nil {
@@ -82,8 +94,8 @@ func (d *Datasource) query(ctx context.Context, q backend.DataQuery) backend.Dat
 }
 
 func (d *Datasource) CheckHealth(ctx context.Context, _ *backend.CheckHealthRequest) (*backend.CheckHealthResult, error) {
-	if d.envErr != nil {
-		return &backend.CheckHealthResult{Status: backend.HealthStatusError, Message: d.envErr.Error()}, nil
+	if d.cfgErr != nil {
+		return &backend.CheckHealthResult{Status: backend.HealthStatusError, Message: d.cfgErr.Error()}, nil
 	}
 	cctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
@@ -91,6 +103,20 @@ func (d *Datasource) CheckHealth(ctx context.Context, _ *backend.CheckHealthRequ
 		return &backend.CheckHealthResult{Status: backend.HealthStatusError, Message: err.Error()}, nil
 	}
 	return &backend.CheckHealthResult{Status: backend.HealthStatusOk, Message: "DQL OK"}, nil
+}
+
+// substituteMacros replaces Grafana's $__timeFrom / $__timeTo macros in the
+// DQL string with the panel's actual range as RFC3339 timestamps. Anything
+// else (e.g. $__interval) is left untouched — Dynatrace DQL has its own
+// time-bucketing syntax.
+func substituteMacros(dql string, from, to time.Time) string {
+	r := strings.NewReplacer(
+		"$__timeFrom", from.UTC().Format(time.RFC3339),
+		"$__timeTo", to.UTC().Format(time.RFC3339),
+		"${__timeFrom}", from.UTC().Format(time.RFC3339),
+		"${__timeTo}", to.UTC().Format(time.RFC3339),
+	)
+	return r.Replace(dql)
 }
 
 // logRawShape emits the key set and per-key value types for the first record,

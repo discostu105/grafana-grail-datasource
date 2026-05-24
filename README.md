@@ -1,136 +1,46 @@
-# Grafana data source plugin template
+# grafana-dql-datasource
 
-This template is a starting point for building a Data Source Plugin for Grafana.
+A Grafana data source plugin for [Dynatrace Grail / DQL](https://docs.dynatrace.com/docs/discover-dynatrace/references/dynatrace-query-language).
 
-## What are Grafana data source plugins?
+## Status
 
-Grafana supports a wide range of data sources, including Prometheus, MySQL, and even Datadog. There’s a good chance you can already visualize metrics from the systems you have set up. In some cases, though, you already have an in-house metrics solution that you’d like to add to your Grafana dashboards. Grafana Data Source Plugins enables integrating such solutions with Grafana.
+v1 — minimum viable:
 
-## Getting started
+- Per-instance config: tenant URL (JSONData) + platform token (SecureJSON)
+- Plain textarea query editor (no syntax highlighting yet)
+- Time range: panel's `From`/`To` is passed as DQL `DefaultTimeframeStart/End`; `$__timeFrom` / `$__timeTo` macros are substituted in the DQL string
+- Result mapping: timeseries (one frame per series) and table (single tabular frame). Other shapes fall back to table.
 
-### Backend
+## Configuration
 
-1. Update [Grafana plugin SDK for Go](https://grafana.com/developers/plugin-tools/key-concepts/backend-plugins/grafana-plugin-sdk-for-go) dependency to the latest minor version:
+In the data source settings page:
 
-   ```bash
-   go get -u github.com/grafana/grafana-plugin-sdk-go
-   go mod tidy
-   ```
+- **Tenant URL** — e.g. `https://abc.apps.dynatrace.com`
+- **API token** — a platform token (`dt0s16.…`) with `storage:metrics:read` / `storage:events:read` etc.
 
-2. Build plugin backend binaries for Linux, Windows and Darwin:
+Click **Save & test** — it runs `data record(x = 1)` against the tenant.
 
-   ```bash
-   mage -v
-   ```
+## Build
 
-3. List all available Mage targets for additional commands:
+```bash
+npm install
+npm run build          # frontend
+mage -v buildAll       # backend (all archs into dist/)
+```
 
-   ```bash
-   mage -l
-   ```
+## Develop
 
-### Frontend
+```bash
+npm run dev            # webpack watch
+npm run server         # docker compose: grafana + this plugin
+```
 
-1. Install dependencies
+Provisioning in `provisioning/datasources/datasources.yml` reads `DT_TENANT_URL` and `DT_TOKEN` from the environment for the dev datasource.
 
-   ```bash
-   npm install
-   ```
+## Repo layout
 
-2. Build plugin in development mode and run in watch mode
-
-   ```bash
-   npm run dev
-   ```
-
-3. Build plugin in production mode
-
-   ```bash
-   npm run build
-   ```
-
-4. Run the tests (using Jest)
-
-   ```bash
-   # Runs the tests and watches for changes, requires git init first
-   npm run test
-
-   # Exits after running all the tests
-   npm run test:ci
-   ```
-
-5. Spin up a Grafana instance and run the plugin inside it (using Docker)
-
-   ```bash
-   npm run server
-   ```
-
-6. Run the E2E tests (using Playwright)
-
-   ```bash
-   # Spins up a Grafana instance first that we tests against
-   npm run server
-
-   # If you wish to start a certain Grafana version. If not specified will use latest by default
-   GRAFANA_VERSION=11.3.0 npm run server
-
-   # Starts the tests
-   npm run e2e
-   ```
-
-7. Run the linter
-
-   ```bash
-   npm run lint
-
-   # or
-
-   npm run lint:fix
-   ```
-
-# Distributing your plugin
-
-When distributing a Grafana plugin either within the community or privately the plugin must be signed so the Grafana application can verify its authenticity. This can be done with the `@grafana/sign-plugin` package.
-
-_Note: It's not necessary to sign a plugin during development. The docker development environment that is scaffolded with `@grafana/create-plugin` caters for running the plugin without a signature._
-
-## Initial steps
-
-Before signing a plugin please read the Grafana [plugin publishing and signing criteria](https://grafana.com/legal/plugins/#plugin-publishing-and-signing-criteria) documentation carefully.
-
-`@grafana/create-plugin` has added the necessary commands and workflows to make signing and distributing a plugin via the grafana plugins catalog as straightforward as possible.
-
-Before signing a plugin for the first time please consult the Grafana [plugin signature levels](https://grafana.com/legal/plugins/#what-are-the-different-classifications-of-plugins) documentation to understand the differences between the types of signature level.
-
-1. Create a [Grafana Cloud account](https://grafana.com/signup).
-2. Make sure that the first part of the plugin ID matches the slug of your Grafana Cloud account.
-   - _You can find the plugin ID in the `plugin.json` file inside your plugin directory. For example, if your account slug is `acmecorp`, you need to prefix the plugin ID with `acmecorp-`._
-3. Create a Grafana Cloud API key with the `PluginPublisher` role.
-4. Keep a record of this API key as it will be required for signing a plugin
-
-## Signing a plugin
-
-### Using Github actions release workflow
-
-If the plugin is using the github actions supplied with `@grafana/create-plugin` signing a plugin is included out of the box. The [release workflow](./.github/workflows/release.yml) can prepare everything to make submitting your plugin to Grafana as easy as possible. Before being able to sign the plugin however a secret needs adding to the Github repository.
-
-1. Please navigate to "settings > secrets > actions" within your repo to create secrets.
-2. Click "New repository secret"
-3. Name the secret "GRAFANA_API_KEY"
-4. Paste your Grafana Cloud API key in the Secret field
-5. Click "Add secret"
-
-#### Push a version tag
-
-To trigger the workflow we need to push a version tag to github. This can be achieved with the following steps:
-
-1. Run `npm version <major|minor|patch>`
-2. Run `git push origin main --follow-tags`
-
-## Learn more
-
-Below you can find source code for existing app plugins and other related documentation.
-
-- [Basic data source plugin example](https://github.com/grafana/grafana-plugin-examples/tree/master/examples/datasource-basic#readme)
-- [`plugin.json` documentation](https://grafana.com/developers/plugin-tools/reference/plugin-json)
-- [How to sign a plugin?](https://grafana.com/developers/plugin-tools/publish-a-plugin/sign-a-plugin)
+- `pkg/plugin/datasource.go` — backend entry: settings → client, QueryData, CheckHealth, macro substitution
+- `pkg/plugin/frames.go` — DQL records → Grafana data frames (timeseries / table)
+- `pkg/dynatrace/client.go` — thin wrapper over `dtctl` SDK
+- `src/components/ConfigEditor.tsx` — tenant URL + API token form
+- `src/components/QueryEditor.tsx` — DQL textarea
