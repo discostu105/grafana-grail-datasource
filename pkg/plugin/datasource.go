@@ -3,11 +3,14 @@ package plugin
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net/url"
 	"strings"
 	"time"
 
 	"github.com/discostu105/dynatracegrail/pkg/dynatrace"
+	"github.com/discostu105/dynatracegrail/pkg/macros"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
@@ -19,31 +22,78 @@ var (
 	_ instancemgmt.InstanceDisposer = (*Datasource)(nil)
 )
 
-// queryTimeout is the per-query context deadline, covering execute + poll.
-const queryTimeout = 60 * time.Second
+const (
+	defaultQueryTimeout = 30 * time.Second
+	defaultTimeframe    = time.Hour
+)
 
 type Datasource struct {
-	dt     *dynatrace.Client
-	cfgErr error
+	dt           *dynatrace.Client
+	cfg          settings
+	cfgErr       error
+	queryTimeout time.Duration
+	defaultRange time.Duration
 }
 
-type instanceJSON struct {
-	TenantURL string `json:"tenantUrl"`
+type settings struct {
+	TenantURL           string `json:"tenantUrl"`
+	QueryTimeoutSeconds int    `json:"queryTimeoutSeconds"`
+	DefaultTimeframe    string `json:"defaultTimeframe"`
 }
 
 func NewDatasource(_ context.Context, s backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
-	var cfg instanceJSON
+	var cfg settings
 	if len(s.JSONData) > 0 {
 		if err := json.Unmarshal(s.JSONData, &cfg); err != nil {
 			return &Datasource{cfgErr: fmt.Errorf("parsing jsonData: %w", err)}, nil
 		}
 	}
+
+	ds := &Datasource{
+		cfg:          cfg,
+		queryTimeout: defaultQueryTimeout,
+		defaultRange: defaultTimeframe,
+	}
+	if cfg.QueryTimeoutSeconds > 0 {
+		ds.queryTimeout = time.Duration(cfg.QueryTimeoutSeconds) * time.Second
+	}
+	if cfg.DefaultTimeframe != "" {
+		if d, err := time.ParseDuration(cfg.DefaultTimeframe); err == nil {
+			ds.defaultRange = d
+		}
+	}
+
+	if err := validateTenantURL(cfg.TenantURL); err != nil {
+		ds.cfgErr = err
+		return ds, nil
+	}
 	token := s.DecryptedSecureJSONData["apiToken"]
+	if token == "" {
+		ds.cfgErr = errors.New("API token is empty — set it in the data source config page")
+		return ds, nil
+	}
+
 	c, err := dynatrace.New(cfg.TenantURL, token)
 	if err != nil {
-		return &Datasource{cfgErr: err}, nil
+		ds.cfgErr = err
+		return ds, nil
 	}
-	return &Datasource{dt: c}, nil
+	ds.dt = c
+	return ds, nil
+}
+
+func validateTenantURL(raw string) error {
+	if raw == "" {
+		return errors.New("tenant URL is empty — set it in the data source config page")
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.Scheme != "https" || u.Host == "" {
+		return fmt.Errorf("tenant URL must look like https://<env>.apps.dynatrace.com, got %q", raw)
+	}
+	if !strings.Contains(u.Host, ".dynatrace.com") {
+		return fmt.Errorf("tenant URL host %q does not look like a Dynatrace endpoint", u.Host)
+	}
+	return nil
 }
 
 func (d *Datasource) Dispose() {}
@@ -72,14 +122,17 @@ func (d *Datasource) query(ctx context.Context, q backend.DataQuery) backend.Dat
 		return backend.ErrDataResponse(backend.StatusBadRequest, "dqlQuery is empty")
 	}
 
-	cctx, cancel := context.WithTimeout(ctx, queryTimeout)
+	cctx, cancel := context.WithTimeout(ctx, d.queryTimeout)
 	defer cancel()
 
-	from, to := q.TimeRange.From, q.TimeRange.To
-	dql := substituteMacros(qm.DqlQuery, from, to)
+	from, to := d.resolveTimeRange(q)
+	interval := q.Interval
+	dql := macros.Expand(qm.DqlQuery, macros.Range{From: from, To: to, Interval: interval})
 
+	start := time.Now()
 	dqlResp, err := d.dt.Query(cctx, dql, from, to)
 	if err != nil {
+		log.DefaultLogger.Warn("dql query failed", "refID", q.RefID, "err", err, "duration", time.Since(start))
 		return backend.ErrDataResponse(backend.StatusInternal, err.Error())
 	}
 
@@ -90,33 +143,65 @@ func (d *Datasource) query(ctx context.Context, q backend.DataQuery) backend.Dat
 	if err != nil {
 		return backend.ErrDataResponse(backend.StatusInternal, fmt.Sprintf("mapping records: %v", err))
 	}
+	log.DefaultLogger.Info("dql query ok", "refID", q.RefID, "rows", len(records), "frames", len(frames), "duration", time.Since(start))
 	return backend.DataResponse{Frames: frames}
 }
 
+// resolveTimeRange picks the From/To passed to Grail. If the panel supplied a
+// range, use it. Otherwise fall back to (now-defaultRange, now).
+func (d *Datasource) resolveTimeRange(q backend.DataQuery) (time.Time, time.Time) {
+	from, to := q.TimeRange.From, q.TimeRange.To
+	if from.IsZero() || to.IsZero() || !to.After(from) {
+		to = time.Now()
+		from = to.Add(-d.defaultRange)
+	}
+	return from, to
+}
+
+// CheckHealth reports four distinct failure modes:
+//   - tenant URL missing/malformed
+//   - token missing
+//   - HTTP transport failure (DNS, TLS, connection refused) — host included
+//   - DQL execute returned a Grail error — body surfaced
 func (d *Datasource) CheckHealth(ctx context.Context, _ *backend.CheckHealthRequest) (*backend.CheckHealthResult, error) {
 	if d.cfgErr != nil {
 		return &backend.CheckHealthResult{Status: backend.HealthStatusError, Message: d.cfgErr.Error()}, nil
 	}
 	cctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
+
 	if _, err := d.dt.Query(cctx, "data record(x = 1)", time.Time{}, time.Time{}); err != nil {
-		return &backend.CheckHealthResult{Status: backend.HealthStatusError, Message: err.Error()}, nil
+		host := "tenant"
+		if u, perr := url.Parse(d.cfg.TenantURL); perr == nil {
+			host = u.Host
+		}
+		msg := classifyHealthError(host, err)
+		return &backend.CheckHealthResult{Status: backend.HealthStatusError, Message: msg}, nil
 	}
-	return &backend.CheckHealthResult{Status: backend.HealthStatusOk, Message: "DQL OK"}, nil
+	return &backend.CheckHealthResult{Status: backend.HealthStatusOk, Message: fmt.Sprintf("Successfully connected to %s", hostOf(d.cfg.TenantURL))}, nil
 }
 
-// substituteMacros replaces Grafana's $__timeFrom / $__timeTo macros in the
-// DQL string with the panel's actual range as RFC3339 timestamps. Anything
-// else (e.g. $__interval) is left untouched — Dynatrace DQL has its own
-// time-bucketing syntax.
-func substituteMacros(dql string, from, to time.Time) string {
-	r := strings.NewReplacer(
-		"$__timeFrom", from.UTC().Format(time.RFC3339),
-		"$__timeTo", to.UTC().Format(time.RFC3339),
-		"${__timeFrom}", from.UTC().Format(time.RFC3339),
-		"${__timeTo}", to.UTC().Format(time.RFC3339),
-	)
-	return r.Replace(dql)
+func classifyHealthError(host string, err error) string {
+	es := err.Error()
+	switch {
+	case strings.Contains(es, "no such host"), strings.Contains(es, "dial"), strings.Contains(es, "connection refused"):
+		return fmt.Sprintf("Cannot reach %s: %v", host, err)
+	case strings.Contains(es, "x509"), strings.Contains(es, "tls"):
+		return fmt.Sprintf("TLS error talking to %s: %v", host, err)
+	case strings.Contains(es, "401"), strings.Contains(es, "Unauthorized"), strings.Contains(es, "authentication"):
+		return fmt.Sprintf("Authentication rejected by %s: %v", host, err)
+	case strings.Contains(es, "403"), strings.Contains(es, "Forbidden"):
+		return fmt.Sprintf("Token lacks required scopes (need storage:metrics:read or similar): %v", err)
+	default:
+		return fmt.Sprintf("DQL execute failed on %s: %v", host, err)
+	}
+}
+
+func hostOf(raw string) string {
+	if u, err := url.Parse(raw); err == nil && u.Host != "" {
+		return u.Host
+	}
+	return raw
 }
 
 // logRawShape emits the key set and per-key value types for the first record,
