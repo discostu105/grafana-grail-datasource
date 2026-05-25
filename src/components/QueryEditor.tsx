@@ -63,6 +63,22 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
           />
         </InlineField>
       )}
+      {queryType !== 'logs' && (
+        <InlineField
+          label="Legend"
+          labelWidth={18}
+          tooltip="Optional series name template. Use {{ control.name }} or ${__field.labels.control.name}. Leave blank for the default (the most relevant label, e.g. control.name)."
+        >
+          <Input
+            width={40}
+            placeholder="{{ control.name }}"
+            value={query.legendFormat ?? ''}
+            onChange={(e: ChangeEvent<HTMLInputElement>) =>
+              onChange({ ...query, legendFormat: e.target.value || undefined })
+            }
+          />
+        </InlineField>
+      )}
       <div style={{ marginTop: 8 }}>
         <CodeEditor
           value={query.dqlQuery ?? ''}

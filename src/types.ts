@@ -11,6 +11,10 @@ export interface DqlQuery extends DataQuery {
   // Override the column that carries the log body when queryType=logs.
   // Defaults to 'content' (DQL `fetch logs` default).
   logBodyField?: string;
+  // Optional Grafana legend template for the value series, e.g.
+  // "{{ control.name }} (avg)". Mapped to Field.Config.DisplayName on the
+  // backend; Grafana then resolves ${__field.labels.X} expressions itself.
+  legendFormat?: string;
 }
 
 export const DEFAULT_QUERY: Partial<DqlQuery> = {
