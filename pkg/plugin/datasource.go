@@ -14,6 +14,7 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
+	"github.com/grafana/grafana-plugin-sdk-go/data"
 )
 
 var (
@@ -99,7 +100,12 @@ func validateTenantURL(raw string) error {
 func (d *Datasource) Dispose() {}
 
 type queryModel struct {
-	DqlQuery string `json:"dqlQuery"`
+	DqlQuery  string `json:"dqlQuery"`
+	QueryType string `json:"queryType"` // "timeseries" (default) | "logs"
+	// LogBodyField names the column that carries the log message body when
+	// QueryType == "logs". Defaults to "content" (the column DQL `fetch
+	// logs` projects by default).
+	LogBodyField string `json:"logBodyField,omitempty"`
 }
 
 func (d *Datasource) QueryData(ctx context.Context, req *backend.QueryDataRequest) (*backend.QueryDataResponse, error) {
@@ -139,11 +145,16 @@ func (d *Datasource) query(ctx context.Context, q backend.DataQuery) backend.Dat
 	records := dqlResp.GetRecords()
 	logRawShape(q.RefID, dql, records)
 
-	frames, err := recordsToFrames(q.RefID, records)
+	var frames []*data.Frame
+	if qm.QueryType == "logs" {
+		frames, err = recordsToLogFrame(q.RefID, records, qm.LogBodyField)
+	} else {
+		frames, err = recordsToFrames(q.RefID, records)
+	}
 	if err != nil {
 		return backend.ErrDataResponse(backend.StatusInternal, fmt.Sprintf("mapping records: %v", err))
 	}
-	log.DefaultLogger.Info("dql query ok", "refID", q.RefID, "rows", len(records), "frames", len(frames), "duration", time.Since(start))
+	log.DefaultLogger.Info("dql query ok", "refID", q.RefID, "queryType", qm.QueryType, "rows", len(records), "frames", len(frames), "duration", time.Since(start))
 	return backend.DataResponse{Frames: frames}
 }
 

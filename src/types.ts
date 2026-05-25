@@ -1,12 +1,21 @@
 import { DataSourceJsonData } from '@grafana/data';
 import { DataQuery } from '@grafana/schema';
 
+export type DqlQueryType = 'timeseries' | 'logs';
+
 export interface DqlQuery extends DataQuery {
   dqlQuery: string;
+  // Default 'timeseries'. When 'logs', the backend maps records to a logs
+  // frame (Meta.PreferredVisualisation=logs, time/body/level/labels).
+  queryType?: DqlQueryType;
+  // Override the column that carries the log body when queryType=logs.
+  // Defaults to 'content' (DQL `fetch logs` default).
+  logBodyField?: string;
 }
 
 export const DEFAULT_QUERY: Partial<DqlQuery> = {
   dqlQuery: '',
+  queryType: 'timeseries',
 };
 
 export interface DqlDataSourceOptions extends DataSourceJsonData {
