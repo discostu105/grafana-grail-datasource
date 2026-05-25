@@ -1,75 +1,58 @@
-// Post-process trace frames: the backend emits `tags` as a JSON-encoded
-// string per row, but Grafana's traces visualisation calls `.reduce()` on
-// it — so the value needs to be an actual array. Parse on the way through
-// the response Observable.
+// Post-process trace frames so Grafana's traces panel doesn't choke.
 //
-// Same pattern grafana-tempo-datasource uses: the backend ships the wire
-// format that's cheapest to produce; the frontend rebuilds the rich
-// JS-side shape the panel expects.
+// The backend emits these columns as JSON-encoded strings (cheap wire
+// format): `tags`, `serviceTags`, `logs`, `references`. The panel calls
+// `.map()` / `.reduce()` / `.forEach()` on them directly, so they need
+// to be real JS arrays by the time the frame reaches the renderer.
+//
+// We mutate the existing frame in place: field.values gets replaced
+// with the parsed array, field.type swaps to `other`. That's simpler
+// and more robust than reconstructing the frame via MutableDataFrame
+// (which has its own opinions about how to interpret the input).
 
-import { DataFrame, FieldType, MutableDataFrame } from '@grafana/data';
+import { DataFrame, Field, FieldType } from '@grafana/data';
 
 const TRACE_VIS = 'trace';
+const ARRAY_FIELDS = new Set(['tags', 'serviceTags', 'logs', 'references']);
 
 export function decodeTraceFrames(frames: DataFrame[]): DataFrame[] {
   if (!frames?.length) {
     return frames;
   }
-  // Debug breadcrumb (visible in browser console when troubleshooting the
-  // traces view) — costs nothing in steady state.
-  const traceCount = frames.filter((f) => f.meta?.preferredVisualisationType === TRACE_VIS).length;
-  if (traceCount) {
-    // eslint-disable-next-line no-console
-    console.debug('[dql] decodeTraceFrames: processing', traceCount, 'of', frames.length, 'frames');
-  }
-  return frames.map((f) => {
-    if (f.meta?.preferredVisualisationType !== TRACE_VIS) {
-      return f;
+  for (const frame of frames) {
+    if (frame.meta?.preferredVisualisationType !== TRACE_VIS) {
+      continue;
     }
-    return decodeTagsField(f);
-  });
+    decodeArrayFieldsInPlace(frame);
+  }
+  return frames;
 }
 
-// Fields Grafana's traces panel expects as actual JS arrays of
-// {key, value} (or similar). The backend ships them as JSON-encoded
-// strings to keep the wire format simple; we decode here so the panel
-// can walk them without choking.
-const ARRAY_FIELDS = new Set(['tags', 'serviceTags', 'logs', 'references']);
-
-function decodeTagsField(frame: DataFrame): DataFrame {
-  const fieldsToDecode = frame.fields.map((f, i) => (ARRAY_FIELDS.has(f.name) ? i : -1)).filter((i) => i >= 0);
-  if (!fieldsToDecode.length) {
-    return frame;
-  }
-  const decodedByIdx = new Map<number, unknown[]>();
-  for (const idx of fieldsToDecode) {
-    const fld = frame.fields[idx];
-    const raw = fld.values;
-    const n = raw?.length ?? 0;
-    const out: unknown[] = new Array(n);
-    for (let i = 0; i < n; i++) {
-      const cell = raw?.get ? raw.get(i) : (raw as unknown[])?.[i];
-      out[i] = parseArrayCell(cell);
+function decodeArrayFieldsInPlace(frame: DataFrame): void {
+  for (const f of frame.fields) {
+    if (!ARRAY_FIELDS.has(f.name)) {
+      continue;
     }
-    decodedByIdx.set(idx, out);
+    const n = f.values?.length ?? 0;
+    const decoded: unknown[] = new Array(n);
+    for (let i = 0; i < n; i++) {
+      const cell = readCell(f, i);
+      decoded[i] = parseArrayCell(cell);
+    }
+    // Direct in-place mutation. The Vector / array on the values field
+    // is swapped out, the type is updated. Grafana's frame model is
+    // structural — no internal indexes to rebuild.
+    (f as unknown as { values: unknown[] }).values = decoded;
+    (f as unknown as { type: FieldType }).type = FieldType.other;
   }
-  // MutableDataFrame lets us swap fields at fixed indexes; replicate the
-  // input frame and overwrite the JSON-encoded columns with the parsed
-  // values (typed as `other` so Grafana treats them as structured
-  // payloads rather than strings).
-  return new MutableDataFrame({
-    ...frame,
-    fields: frame.fields.map((f, i) =>
-      decodedByIdx.has(i)
-        ? {
-            name: f.name,
-            type: FieldType.other,
-            config: f.config ?? {},
-            values: decodedByIdx.get(i) as unknown as typeof f.values,
-          }
-        : f
-    ),
-  });
+}
+
+function readCell(field: Field, i: number): unknown {
+  const v = field.values as { get?: (i: number) => unknown } | unknown[] | undefined;
+  if (v && typeof (v as { get?: unknown }).get === 'function') {
+    return (v as { get: (i: number) => unknown }).get(i);
+  }
+  return (v as unknown[] | undefined)?.[i];
 }
 
 function parseArrayCell(cell: unknown): unknown[] {
