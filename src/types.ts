@@ -16,7 +16,9 @@ export type BuilderSource =
   | 'bizevents'
   | 'dt.davis.problems'
   | 'dt.davis.events'
-  | 'metrics';
+  | 'metrics'
+  | 'smartscapeNodes "HOST"'
+  | 'smartscapeNodes "SERVICE"';
 
 // `matchesValue` is for array fields (dt.tags) or wildcard patterns ("*prod*").
 // Use `contains` for substring search on plain strings.

@@ -58,7 +58,7 @@ datasources:
 **Timeseries** — host CPU bucketed by host:
 
 ```dql
-timeseries cpu = avg(dt.host.cpu.usage), by:{dt.entity.host}
+timeseries cpu = avg(dt.host.cpu.usage), by:{dt.smartscape.host}
 | filter $__timeFilter(timestamp)
 ```
 
@@ -77,9 +77,9 @@ timeseries val = avg(loxone.control.value),
 **Variable query** — list of host names for a dashboard dropdown:
 
 ```dql
-fetch dt.entity.host
-| fields entity.name
-| sort entity.name asc
+smartscapeNodes "HOST"
+| fields name
+| sort name asc
 ```
 
 ## Macros

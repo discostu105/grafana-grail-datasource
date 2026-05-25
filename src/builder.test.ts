@@ -114,4 +114,10 @@ describe('dqlFromBuilder', () => {
     expect(dql).toContain('avg(`dt.host.cpu.usage`)');
     expect(dql).not.toContain('count(');
   });
+
+  it('smartscapeNodes source is emitted verbatim (no fetch prefix)', () => {
+    const dql = dqlFromBuilder(s({ source: 'smartscapeNodes "HOST"' }));
+    expect(dql.startsWith('smartscapeNodes "HOST"')).toBe(true);
+    expect(dql).not.toContain('fetch smartscapeNodes');
+  });
 });

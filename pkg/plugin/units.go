@@ -143,19 +143,22 @@ func pickUnit(fieldName string, labels data.Labels) string {
 
 // preferredDisplayName builds a legend string from the most relevant label.
 // For Loxone series the most useful label is `control.name`; for entity
-// metrics it's `dt.entity.host.name` etc. Falls back to empty (let Grafana
-// use its default).
+// metrics it's `host.name` / `service.name` (or the `name` field emitted by
+// `smartscapeNodes` results). `dt.smartscape.host` / `.service` carry the
+// entity ID — used as a last-resort label when no human name is available.
+// Falls back to empty (let Grafana use its default).
 func preferredDisplayName(fieldName string, labels data.Labels) string {
 	if labels == nil {
 		return ""
 	}
 	for _, key := range []string{
 		"control.name",
-		"dt.entity.host.name",
-		"dt.entity.host",
 		"host.name",
 		"service.name",
 		"k8s.namespace.name",
+		"name",
+		"dt.smartscape.host",
+		"dt.smartscape.service",
 	} {
 		if v, ok := labels[key]; ok && v != "" {
 			return v

@@ -9,7 +9,7 @@ and **trace data**:
 
 - The query editor is a plain textarea — no syntax highlighting, no
   autocomplete, no formatting, no error markers, no run shortcut.
-- DQL has a richer surface (`fetch spans`, `fetch dt.entity.*`) than the
+- DQL has a richer surface (`fetch spans`, `smartscapeNodes`) than the
   current frame mapper exposes; in particular, distributed traces are
   not surfaced as Grafana traces.
 - Operational polish (request tracing, retry, rate limiting, branding,
@@ -95,7 +95,7 @@ data.VisTypeTrace`) with the OpenTelemetry-compatible field set
   data sources use), expose a form-based builder for the most common
   shape:
   - Data source: dropdown (`metrics`, `logs`, `events`, `spans`,
-    `dt.entity.*`).
+    `smartscapeNodes "HOST"` / `"SERVICE"`).
   - Filters: repeatable `field` `operator` `value` rows.
   - Group by: multi-select of dimensions discovered via R3.2.
   - Aggregation: `count` / `avg` / `sum` / `min` / `max` plus the field
@@ -115,7 +115,7 @@ data.VisTypeTrace`) with the OpenTelemetry-compatible field set
   - Decimal places from the column's declared precision.
   - Min / max from metadata when present (drives gauges).
   - Display name templating from group-by dimensions (e.g.
-    `{{dt.entity.host}}`).
+    `{{dt.smartscape.host}}`).
 - Add a per-query "Series naming" input (templated string) that overrides
   the default legend, mirroring the experience of mature data sources.
 

@@ -37,6 +37,8 @@ export const BUILDER_SOURCES: BuilderSource[] = [
   'dt.davis.problems',
   'dt.davis.events',
   'metrics',
+  'smartscapeNodes "HOST"',
+  'smartscapeNodes "SERVICE"',
 ];
 
 export const BUILDER_OPERATORS: BuilderOperator[] = ['==', '!=', 'contains', 'matchesValue'];
@@ -60,7 +62,7 @@ export function dqlFromBuilder(b: BuilderState): string {
 function dqlFromFetch(b: BuilderState): string {
   const filters = b.filters.filter((f) => f.field?.trim() && f.value?.trim());
   const groupBy = b.groupBy.filter(Boolean);
-  const lines: string[] = [`fetch ${b.source}`];
+  const lines: string[] = [b.source.startsWith('smartscapeNodes ') ? b.source : `fetch ${b.source}`];
   if (filters.length) {
     lines.push(`| filter ${filters.map(formatFilter).join(' and ')}`);
   }

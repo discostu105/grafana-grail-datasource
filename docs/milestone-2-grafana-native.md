@@ -95,7 +95,7 @@ alert rules, and shippable with at least one out-of-the-box dashboard.
 
 - Declare ad-hoc filter support: expose a `getTagKeys` and `getTagValues`
   method on the `DataSource` class.
-- `getTagKeys` runs a DQL probe (e.g. `fetch dt.entity.host | fieldsKeep
+- `getTagKeys` runs a DQL probe (e.g. `smartscapeNodes "HOST" | fieldsKeep
 …` or a metadata DQL) and returns the set of dimensions the user can
   filter by. For v1, restrict to a small curated list (host, process,
   service, k8s.namespace) plus any columns observed in the last successful
@@ -146,7 +146,7 @@ alert rules, and shippable with at least one out-of-the-box dashboard.
 - An alert rule built on a DQL `timeseries` query fires when expected.
 - Explore's logs view renders DQL `fetch logs` output with severity colors
   and label filters.
-- A dashboard variable populated from `summarize by:{dt.entity.host}`
+- A dashboard variable populated from `summarize by:{dt.smartscape.host}`
   works in a panel.
 - The two bundled dashboards import cleanly into a fresh Grafana and show
   data within 30 seconds of pointing at a live tenant.

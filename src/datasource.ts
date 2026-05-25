@@ -26,7 +26,7 @@ import { decodeTraceFrames, enhanceTraceListFrames, stampTraceCorrelations } fro
 // Curated tag keys we always expose for the ad-hoc filter UI. The Loxone
 // tenant we've seen in practice carries control.name / control.category /
 // control.room / state.name / unit on every metric series; entity-typed
-// data uses dt.entity.host / host.name / service.name / k8s.namespace.name.
+// data uses dt.smartscape.host / host.name / service.name / k8s.namespace.name.
 // These are merged with whatever Grail's autocomplete reports.
 const CURATED_TAG_KEYS = [
   'control.name',
@@ -35,8 +35,8 @@ const CURATED_TAG_KEYS = [
   'control.type',
   'state.name',
   'unit',
-  'dt.entity.host.name',
-  'dt.entity.host',
+  'dt.smartscape.host',
+  'dt.smartscape.service',
   'host.name',
   'service.name',
   'k8s.namespace.name',

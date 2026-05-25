@@ -136,7 +136,7 @@ prototype into something safe to point at a production tenant.
 - Two data source instances pointing at different tenants coexist in one Grafana.
 - A dashboard with a 24-hour time picker shows 24 hours of data (not 1 hour).
 - A panel with a `$host` template variable substitutes correctly into the DQL.
-- A `fetch dt.entity.host | limit 10` query renders a table panel.
+- A `smartscapeNodes "HOST" | limit 10` query renders a table panel.
 - `pkg/plugin/` test coverage ≥ 70%, all green in CI.
 - README and CHANGELOG reviewed; provisioning example tested in
   `docker-compose.yaml`.
