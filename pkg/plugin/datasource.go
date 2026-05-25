@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"net/url"
 	"strings"
 	"time"
@@ -20,6 +21,7 @@ import (
 var (
 	_ backend.QueryDataHandler      = (*Datasource)(nil)
 	_ backend.CheckHealthHandler    = (*Datasource)(nil)
+	_ backend.CallResourceHandler   = (*Datasource)(nil)
 	_ instancemgmt.InstanceDisposer = (*Datasource)(nil)
 )
 
@@ -98,6 +100,42 @@ func validateTenantURL(raw string) error {
 }
 
 func (d *Datasource) Dispose() {}
+
+// CallResource exposes plugin-side HTTP endpoints to the frontend. Available:
+//
+//	POST /autocomplete   { "query": "<DQL>", "position": <int> }
+//	  → proxies to Grail's /platform/storage/query/v1/query:autocomplete
+//	    and returns the raw response body. Used by the Monaco completion
+//	    provider in QueryEditor.tsx.
+func (d *Datasource) CallResource(ctx context.Context, req *backend.CallResourceRequest, sender backend.CallResourceResponseSender) error {
+	if d.cfgErr != nil {
+		return sender.Send(&backend.CallResourceResponse{
+			Status: http.StatusBadRequest,
+			Body:   []byte(d.cfgErr.Error()),
+		})
+	}
+	switch req.Path {
+	case "autocomplete":
+		body, err := d.dt.Autocomplete(ctx, req.Body)
+		if err != nil {
+			log.DefaultLogger.Warn("autocomplete proxy failed", "err", err)
+			return sender.Send(&backend.CallResourceResponse{
+				Status: http.StatusBadGateway,
+				Body:   []byte(err.Error()),
+			})
+		}
+		return sender.Send(&backend.CallResourceResponse{
+			Status:  http.StatusOK,
+			Headers: map[string][]string{"Content-Type": {"application/json"}},
+			Body:    body,
+		})
+	default:
+		return sender.Send(&backend.CallResourceResponse{
+			Status: http.StatusNotFound,
+			Body:   []byte("unknown resource: " + req.Path),
+		})
+	}
+}
 
 type queryModel struct {
 	DqlQuery  string `json:"dqlQuery"`
