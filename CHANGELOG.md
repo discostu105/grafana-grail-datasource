@@ -6,6 +6,26 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.12.2] - 2026-05-25
+
+### Added
+
+- Visual Query Builder source dropdown is now populated live from
+  `fetch dt.system.data_objects | filter type == "table"`. New
+  `GET /resources/data-objects` endpoint (cached for an hour) returns
+  the real set of fetchable tables on the connected tenant — no more
+  hard-coded six-item list. Synthetic entries `metrics (timeseries)` and
+  `smartscapeNodes "HOST"` / `"SERVICE"` (#16) stay pinned at the top
+  because they use top-level DQL commands, not `fetch`. Falls back to a
+  built-in list if the lookup fails.
+- New prometheus counter `grafana_dql_data_objects_requests_total{status}`
+  for tracking the new resource endpoint.
+
+### Changed
+
+- Pulled in #16: builder no longer suggests deprecated `dt.entity.*`
+  sources; emits `smartscapeNodes "HOST"` / `"SERVICE"` verbatim.
+
 ## [1.12.1] - 2026-05-25
 
 ### Fixed

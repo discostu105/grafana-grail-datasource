@@ -34,7 +34,7 @@ const (
 	// pluginVersion is mirrored from package.json / plugin.json. Bump both
 	// together on release; surfaced in the User-Agent so Dynatrace can
 	// correlate plugin traffic.
-	pluginVersion = "1.12.1"
+	pluginVersion = "1.12.2"
 	userAgent     = "grafana-dynatrace-datasource/" + pluginVersion
 	// healthProbeQuery is a syntactically minimal DQL string used by
 	// CheckHealth's Verify probe. It exercises auth + network without
@@ -48,6 +48,7 @@ type Datasource struct {
 	cfgErr       error
 	queryTimeout time.Duration
 	defaultRange time.Duration
+	dataObjects  dataObjectsCache
 }
 
 type settings struct {
@@ -108,6 +109,10 @@ func (d *Datasource) Dispose() {}
 //	  → proxies to Grail's /platform/storage/query/v1/query:autocomplete
 //	    and returns the raw response body. Used by the Monaco completion
 //	    provider in QueryEditor.tsx.
+//	GET  /data-objects
+//	  → enumerates fetchable Grail tables via
+//	    `fetch dt.system.data_objects | filter type == "table"`.
+//	    Cached for an hour. Populates the Visual Query Builder's source dropdown.
 func (d *Datasource) CallResource(ctx context.Context, req *backend.CallResourceRequest, sender backend.CallResourceResponseSender) error {
 	if d.cfgErr != nil {
 		return sender.Send(&backend.CallResourceResponse{
@@ -131,6 +136,22 @@ func (d *Datasource) CallResource(ctx context.Context, req *backend.CallResource
 			Status:  http.StatusOK,
 			Headers: map[string][]string{"Content-Type": {"application/json"}},
 			Body:    body,
+		})
+	case "data-objects":
+		objs, err := d.listDataObjects(ctx)
+		if err != nil {
+			log.DefaultLogger.Warn("data-objects lookup failed", "err", err)
+			observeDataObjects("error")
+			return sender.Send(&backend.CallResourceResponse{
+				Status: http.StatusBadGateway,
+				Body:   []byte(err.Error()),
+			})
+		}
+		observeDataObjects("ok")
+		return sender.Send(&backend.CallResourceResponse{
+			Status:  http.StatusOK,
+			Headers: map[string][]string{"Content-Type": {"application/json"}},
+			Body:    marshalDataObjects(objs),
 		})
 	default:
 		return sender.Send(&backend.CallResourceResponse{

@@ -17,7 +17,7 @@ import {
 import { DataSourceWithBackend, getBackendSrv, getTemplateSrv } from '@grafana/runtime';
 import { Observable, firstValueFrom, map } from 'rxjs';
 
-import { AdhocFilter, DqlQuery, DqlDataSourceOptions, DEFAULT_QUERY } from './types';
+import { AdhocFilter, DataObject, DqlQuery, DqlDataSourceOptions, DEFAULT_QUERY } from './types';
 import { GrailAutocompleteResponse } from './dql/language';
 import { applyDerivedFields } from './derivedFields';
 import { buildLogContextDQL, buildLogsVolumeQuery } from './logsHooks';
@@ -127,6 +127,24 @@ export class DataSource
   // QueryEditor's Monaco language registration can reuse it.
   autocomplete(query: string, position: number): Promise<GrailAutocompleteResponse> {
     return getBackendSrv().post(`/api/datasources/uid/${this.uid}/resources/autocomplete`, { query, position });
+  }
+
+  // dataObjects returns the tenant's fetchable Grail tables, as reported by
+  // `fetch dt.system.data_objects`. The backend caches the result for an hour,
+  // and this frontend method memoizes the in-flight promise so concurrent
+  // BuilderEditor mounts only fire one request.
+  private dataObjectsPromise?: Promise<DataObject[]>;
+  dataObjects(): Promise<DataObject[]> {
+    if (!this.dataObjectsPromise) {
+      this.dataObjectsPromise = getBackendSrv()
+        .get<DataObject[]>(`/api/datasources/uid/${this.uid}/resources/data-objects`)
+        .catch((err) => {
+          // Reset on failure so a later mount retries instead of staying stuck.
+          this.dataObjectsPromise = undefined;
+          throw err;
+        });
+    }
+    return this.dataObjectsPromise;
   }
 
   // collectAdhocFilters pulls the dashboard's ad-hoc filter variables that

@@ -1,6 +1,13 @@
-import React, { ChangeEvent } from 'react';
+import React, { ChangeEvent, useEffect, useMemo, useState } from 'react';
 import { Button, Combobox, Field as UiField, Input, Select, Stack } from '@grafana/ui';
-import type { BuilderState, BuilderFilter, BuilderOperator, BuilderAggFn, BuilderBucket } from '../types';
+import type {
+  BuilderState,
+  BuilderFilter,
+  BuilderOperator,
+  BuilderAggFn,
+  BuilderBucket,
+  DataObject,
+} from '../types';
 import {
   BUILDER_AGG_FNS,
   BUILDER_BUCKETS,
@@ -11,19 +18,68 @@ import {
 interface Props {
   value: BuilderState;
   onChange: (next: BuilderState) => void;
+  // Optional loader; QueryEditor wires this to DataSource.dataObjects().
+  // When missing or rejecting, the dropdown falls back to BUILDER_SOURCES.
+  loadDataObjects?: () => Promise<DataObject[]>;
 }
 
-export function BuilderEditor({ value, onChange }: Props) {
+// Sources that aren't fetchable tables and so never appear in
+// `fetch dt.system.data_objects`. The builder still supports them via
+// command-specific generation paths: `metrics` → `timeseries`,
+// `smartscapeNodes "HOST"` / `"SERVICE"` → top-level smartscapeNodes command.
+// Pinned at the top of the dropdown so they're discoverable.
+const SYNTHETIC_OPTIONS = [
+  { label: 'metrics (timeseries)', value: 'metrics' },
+  { label: 'smartscapeNodes "HOST"', value: 'smartscapeNodes "HOST"' },
+  { label: 'smartscapeNodes "SERVICE"', value: 'smartscapeNodes "SERVICE"' },
+];
+
+export function BuilderEditor({ value, onChange, loadDataObjects }: Props) {
   const update = (patch: Partial<BuilderState>) => onChange({ ...value, ...patch });
+  const [tables, setTables] = useState<DataObject[] | null>(null);
+
+  useEffect(() => {
+    if (!loadDataObjects) {
+      return;
+    }
+    let alive = true;
+    loadDataObjects()
+      .then((rows) => {
+        if (alive) {
+          setTables(rows);
+        }
+      })
+      .catch(() => {
+        // Silently fall back — BUILDER_SOURCES still works.
+      });
+    return () => {
+      alive = false;
+    };
+  }, [loadDataObjects]);
+
+  const sourceOptions = useMemo(() => {
+    // When the live list is available, prefer it; otherwise fall back to
+    // the curated BUILDER_SOURCES we ship in the bundle. Synthetic entries
+    // (metrics, smartscapeNodes) are always pinned at the top.
+    const synthetic = new Set(SYNTHETIC_OPTIONS.map((o) => o.value));
+    const rows =
+      tables && tables.length > 0
+        ? tables.map((t) => ({ label: `${t.display_name} (${t.name})`, value: t.name }))
+        : BUILDER_SOURCES.filter((s) => !synthetic.has(s)).map((s) => ({ label: s, value: s }));
+    return [...SYNTHETIC_OPTIONS, ...rows];
+  }, [tables]);
 
   return (
     <Stack direction="column" gap={1}>
       <Stack direction="row" gap={2} alignItems="flex-end">
-        <UiField label="Data source" description="Grail table to fetch from">
+        <UiField label="Data source" description="Grail table (live from dt.system.data_objects)">
           <Combobox
-            width={26}
-            options={BUILDER_SOURCES.map((s) => ({ label: s, value: s }))}
-            value={{ label: value.source, value: value.source }}
+            width={36}
+            options={sourceOptions}
+            value={{
+              label: sourceOptions.find((o) => o.value === value.source)?.label ?? value.source,
+              value: value.source,
+            }}
             onChange={(opt) => update({ source: opt?.value ?? value.source })}
             createCustomValue
           />

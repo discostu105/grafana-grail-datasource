@@ -37,6 +37,13 @@ export interface BuilderFilter {
   value: string;
 }
 
+// Wire shape returned by `GET /resources/data-objects` (backend listDataObjects).
+// One row per `fetch dt.system.data_objects | filter type == "table"` result.
+export interface DataObject {
+  name: string;
+  display_name: string;
+}
+
 export interface BuilderState {
   source: BuilderSource | string;
   filters: BuilderFilter[];

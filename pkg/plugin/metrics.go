@@ -58,6 +58,14 @@ var (
 		},
 		[]string{"status"},
 	)
+	dataObjectsRequestsTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "grafana_dql",
+			Name:      "data_objects_requests_total",
+			Help:      "Total number of /resources/data-objects lookups, labelled by status.",
+		},
+		[]string{"status"},
+	)
 )
 
 // observeQuery records one query execution. status is one of "ok", "error",
@@ -73,4 +81,11 @@ func observeQuery(queryType, status string, durationSeconds float64) {
 // observeAutocomplete records one /resources/autocomplete proxy call.
 func observeAutocomplete(status string) {
 	autocompleteRequestsTotal.WithLabelValues(status).Inc()
+}
+
+// observeDataObjects records one /resources/data-objects lookup. Misses go
+// through to Grail; hits are served from the in-memory cache and never
+// increment this counter.
+func observeDataObjects(status string) {
+	dataObjectsRequestsTotal.WithLabelValues(status).Inc()
 }
