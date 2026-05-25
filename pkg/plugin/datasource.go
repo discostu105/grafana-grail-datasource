@@ -148,6 +148,10 @@ type queryModel struct {
 	// fields, e.g. "{{ control.name }} (avg)". Grafana resolves
 	// ${__field.labels.X} at render time.
 	LegendFormat string `json:"legendFormat,omitempty"`
+	// AdhocFilters propagates the dashboard's top-bar filters (stamped on
+	// by applyTemplateVariables on the frontend). Substituted into
+	// $__adhocFilters or auto-appended as `| filter ...`.
+	AdhocFilters []AdhocFilter `json:"adhocFilters,omitempty"`
 }
 
 func (d *Datasource) QueryData(ctx context.Context, req *backend.QueryDataRequest) (*backend.QueryDataResponse, error) {
@@ -175,7 +179,8 @@ func (d *Datasource) query(ctx context.Context, q backend.DataQuery) backend.Dat
 
 	from, to := d.resolveTimeRange(q)
 	interval := q.Interval
-	dql := macros.Expand(qm.DqlQuery, macros.Range{From: from, To: to, Interval: interval})
+	dql := applyAdhocFilters(qm.DqlQuery, qm.AdhocFilters)
+	dql = macros.Expand(dql, macros.Range{From: from, To: to, Interval: interval})
 
 	start := time.Now()
 	dqlResp, err := d.dt.Query(cctx, dql, from, to)

@@ -1,6 +1,8 @@
 import React, { ChangeEvent } from 'react';
 import { QueryEditorProps } from '@grafana/data';
 import { getBackendSrv } from '@grafana/runtime';
+// (autocomplete now lives entirely in src/dql/language.ts; QueryEditor just
+// proxies the resource call through to the language registration.)
 import { CodeEditor, InlineField, RadioButtonGroup, Input, Button, HorizontalGroup } from '@grafana/ui';
 import { DataSource } from '../datasource';
 import { DqlDataSourceOptions, DqlQuery, DqlQueryType } from '../types';

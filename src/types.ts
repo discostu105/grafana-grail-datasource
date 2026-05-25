@@ -15,6 +15,16 @@ export interface DqlQuery extends DataQuery {
   // "{{ control.name }} (avg)". Mapped to Field.Config.DisplayName on the
   // backend; Grafana then resolves ${__field.labels.X} expressions itself.
   legendFormat?: string;
+  // Ad-hoc filters from the dashboard's top bar, stamped onto the query
+  // by applyTemplateVariables() on the way to the backend. The backend
+  // substitutes $__adhocFilters or auto-appends `| filter ...`.
+  adhocFilters?: AdhocFilter[];
+}
+
+export interface AdhocFilter {
+  key: string;
+  operator: string; // "=", "!=", "=~", "!~"
+  value: string;
 }
 
 export const DEFAULT_QUERY: Partial<DqlQuery> = {
