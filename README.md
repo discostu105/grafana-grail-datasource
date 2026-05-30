@@ -10,11 +10,7 @@ logs, traces, and events rendered as native Grafana visualizations.
 [![License](https://img.shields.io/github/license/discostu105/grafana-grail-datasource)](LICENSE)
 ![Grafana](https://img.shields.io/badge/Grafana-%E2%89%A5%2012.3.0-F46800?logo=grafana&logoColor=white)
 
-<!-- TODO(screenshot): hero image — the Monaco DQL editor mid-query with
-     syntax highlighting and the Grail-backed autocomplete dropdown open,
-     against a generic query (e.g. host CPU or service requests). This is the
-     product's strongest visual; capture before catalog submission and add:
-     ![DQL editor with Grail-backed autocomplete](src/img/screenshot-editor.png) -->
+![Writing DQL against Dynatrace Grail in Grafana Explore — syntax highlighting, query types, and the Builder/Code toggle](src/img/screenshot-editor.png)
 
 ## Features
 
@@ -117,8 +113,7 @@ Each query has a **type** (Timeseries / Logs / Traces) and an editor **mode**:
   `smartscapeNodes` entries. Switching from Builder to Code keeps the generated
   query; switching back warns before overwriting hand-written DQL.
 
-<!-- TODO(screenshot): the visual Builder showing the live source dropdown +
-     a filter / group-by / aggregation row, with the generated DQL visible. -->
+![The visual query builder — pick a Grail table (the source list is populated live from the tenant), an aggregation, and a time bucket; the generated DQL updates as you go](src/img/screenshot-builder.png)
 
 ## Example queries
 

@@ -25,7 +25,10 @@
       { "name": "Issues", "url": "https://github.com/discostu105/grafana-grail-datasource/issues" },
       { "name": "DQL reference", "url": "https://docs.dynatrace.com/docs/discover-dynatrace/references/dynatrace-query-language" }
     ],
-    "screenshots": [],
+    "screenshots": [
+      { "name": "DQL editor", "path": "img/screenshot-editor.png" },
+      { "name": "Visual query builder", "path": "img/screenshot-builder.png" }
+    ],
     "version": "%VERSION%",
     "updated": "%TODAY%"
   },
