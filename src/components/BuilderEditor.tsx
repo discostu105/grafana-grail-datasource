@@ -82,17 +82,34 @@ export function BuilderEditor({ value, onChange, loadDataObjects }: Props) {
             }
           />
         </UiField>
-        {value.aggregation.fn !== 'count' && (
-          <UiField label="Field" description="Numeric field to aggregate">
+        {value.source === 'metrics' ? (
+          // Metrics aggregate a metric key (e.g. dt.host.cpu.usage), not an
+          // event field — so this is always shown, even for count (which the
+          // generator coerces to avg). Without it the DQL falls back to a
+          // hardcoded default metric.
+          <UiField label="Metric key" description="Dynatrace metric key to aggregate">
             <Input
-              width={20}
-              placeholder="duration"
+              width={28}
+              placeholder="dt.host.cpu.usage"
               value={value.aggregation.field ?? ''}
               onChange={(e: ChangeEvent<HTMLInputElement>) =>
                 update({ aggregation: { ...value.aggregation, field: e.target.value || undefined } })
               }
             />
           </UiField>
+        ) : (
+          value.aggregation.fn !== 'count' && (
+            <UiField label="Field" description="Numeric field to aggregate">
+              <Input
+                width={20}
+                placeholder="duration"
+                value={value.aggregation.field ?? ''}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  update({ aggregation: { ...value.aggregation, field: e.target.value || undefined } })
+                }
+              />
+            </UiField>
+          )
         )}
         <UiField label="Time bucket" description="Group by binned timestamp">
           <Select
