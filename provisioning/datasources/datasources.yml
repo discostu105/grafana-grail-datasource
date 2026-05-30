@@ -2,6 +2,7 @@ apiVersion: 1
 
 datasources:
   - name: 'grail'
+    uid: 'grail-test'
     type: 'discostu105-grail-datasource'
     access: proxy
     isDefault: false
