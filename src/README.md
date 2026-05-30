@@ -73,8 +73,9 @@ Host CPU bucketed by host, as a timeseries:
 
 ```dql
 timeseries cpu = avg(dt.host.cpu.usage), by:{dt.smartscape.host}
-| filter $__timeFilter(timestamp)
 ```
+
+`timeseries` honors the panel/alert time range automatically — no `$__timeFilter` needed. Use `$__timeFilter(<field>)` only on record queries (`fetch …`).
 
 ## Documentation
 
