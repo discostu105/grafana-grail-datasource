@@ -17,7 +17,10 @@ test('smoke: renders Monaco DQL editor and query-type radio', async ({
   await expect(page.getByText(Q.queryTypeLabel)).toBeVisible();
   await expect(page.getByRole('radio', { name: Q.queryTypeRadios.timeseries })).toBeVisible();
   await expect(page.getByRole('radio', { name: Q.queryTypeRadios.logs })).toBeVisible();
-  await expect(page.getByText(Q.legendLabel)).toBeVisible();
+  // Scope "Legend" to the query editor row: the panel-options pane also
+  // renders "Legend" sections, so a page-wide getByText is ambiguous
+  // (strict-mode "resolved to N elements") and flakes on render timing.
+  await expect(panelEditPage.getQueryEditorRow('A').getByText(Q.legendLabel)).toBeVisible();
   // CodeEditor renders a textarea in the shadow DOM; assert the container.
   await expect(panelEditPage.panel.locator).toBeVisible();
 });
@@ -33,5 +36,5 @@ test('switches to Logs mode → Body field appears, Legend disappears', async ({
   await page.getByRole('radio', { name: Q.queryTypeRadios.logs }).click();
 
   await expect(page.getByText(Q.bodyFieldLabel)).toBeVisible();
-  await expect(page.getByText(Q.legendLabel)).not.toBeVisible();
+  await expect(panelEditPage.getQueryEditorRow('A').getByText(Q.legendLabel)).not.toBeVisible();
 });
