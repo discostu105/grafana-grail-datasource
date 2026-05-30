@@ -1,4 +1,4 @@
-module github.com/discostu105/dynatracegrail
+module github.com/discostu105/grail
 
 go 1.25.7
 

@@ -229,7 +229,7 @@ jobs:
       - name: Docker logs
         if: ${{ always() && steps.run-tests.outcome == 'failure' }}
         run: |
-          docker logs discostu105-dynatracegrail-datasource >& grafana-server.log
+          docker logs discostu105-grail-datasource >& grafana-server.log
 
       - name: Stop grafana docker
         run: docker compose down

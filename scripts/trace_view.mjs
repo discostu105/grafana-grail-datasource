@@ -26,7 +26,7 @@ const left = {
   queries: [
     {
       refId: 'A',
-      datasource: { uid: DS_UID, type: 'discostu105-dynatracegrail-datasource' },
+      datasource: { uid: DS_UID, type: 'discostu105-grail-datasource' },
       dqlQuery: 'fetch spans | filter service.name == "homelab-telemetrygen" | limit 8 | sort start_time',
       queryType: 'traces',
     },

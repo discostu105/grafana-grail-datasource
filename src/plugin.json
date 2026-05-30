@@ -1,15 +1,15 @@
 {
   "$schema": "https://raw.githubusercontent.com/grafana/grafana/main/docs/sources/developers/plugins/plugin.schema.json",
   "type": "datasource",
-  "name": "Dynatracegrail",
-  "id": "discostu105-dynatracegrail-datasource",
+  "name": "Grail (DQL)",
+  "id": "discostu105-grail-datasource",
   "metrics": true,
   "logs": true,
   "tracing": true,
   "alerting": true,
   "annotations": true,
   "backend": true,
-  "executable": "gpx_dynatracegrail",
+  "executable": "gpx_grail",
   "info": {
     "description": "Query Dynatrace Grail with DQL — timeseries, table, log, and event panels from a Dynatrace platform tenant.",
     "author": {

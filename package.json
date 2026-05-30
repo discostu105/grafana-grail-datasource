@@ -1,5 +1,5 @@
 {
-  "name": "dynatracegrail",
+  "name": "grail",
   "version": "1.12.2",
   "scripts": {
     "build": "webpack -c ./.config/webpack/webpack.config.ts --env production",

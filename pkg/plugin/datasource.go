@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/discostu105/dynatracegrail/pkg/dynatrace"
-	"github.com/discostu105/dynatracegrail/pkg/macros"
+	"github.com/discostu105/grail/pkg/dynatrace"
+	"github.com/discostu105/grail/pkg/macros"
 	dtquery "github.com/dynatrace-oss/dtctl/sdk/api/query"
 	"github.com/dynatrace-oss/dtctl/sdk/httpclient"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
@@ -35,7 +35,7 @@ const (
 	// together on release; surfaced in the User-Agent so Dynatrace can
 	// correlate plugin traffic.
 	pluginVersion = "1.12.2"
-	userAgent     = "grafana-dynatrace-datasource/" + pluginVersion
+	userAgent     = "discostu105-grail-datasource/" + pluginVersion
 	// healthProbeQuery is a syntactically minimal DQL string used by
 	// CheckHealth's Verify probe. It exercises auth + network without
 	// consuming any Grail scan budget.

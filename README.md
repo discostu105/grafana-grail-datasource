@@ -1,4 +1,4 @@
-# grafana-dynatrace-datasource
+# Grail (DQL) data source for Grafana
 
 Grafana data source for [Dynatrace Grail / DQL](https://docs.dynatrace.com/docs/discover-dynatrace/references/dynatrace-query-language).
 
@@ -42,7 +42,7 @@ milestone docs for the per-requirement status:
    - `storage:events:read` — events / problems
    - `storage:spans:read` — traces
    - `storage:buckets:read` — required alongside the table scopes above
-2. In Grafana → Connections → Data sources → Add → search **Dynatracegrail**.
+2. In Grafana → Connections → Data sources → Add → search **Grail (DQL)**.
 3. Fill in:
    - **Tenant URL** — `https://<env>.apps.dynatrace.com`
    - **API token** — your `dt0s16.*` platform token (stored encrypted via `secureJsonData`).
@@ -56,7 +56,7 @@ milestone docs for the per-requirement status:
 apiVersion: 1
 datasources:
   - name: Dynatrace
-    type: discostu105-dynatracegrail-datasource
+    type: discostu105-grail-datasource
     access: proxy
     jsonData:
       tenantUrl: https://<env>.apps.dynatrace.com
