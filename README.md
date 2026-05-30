@@ -67,13 +67,21 @@ in `grafana.ini`.
 ## Configuration
 
 1. **Create a platform token** (`dt0s16.*`) in Dynatrace →
-   **Settings → Access Tokens → Platform tokens**. Grant the scopes for the
-   data you intend to query:
+   **Settings → Access Tokens → Platform tokens**. Grail authorizes a read with
+   a **bucket** scope _and_ a **table** scope, so always grant
+   `storage:buckets:read` alongside the table scopes for the data you query:
+   - `storage:buckets:read` — **always required**; without bucket access every
+     query is denied regardless of the table scopes below
+   - `storage:logs:read` — logs; also the scope the **Save & test** probe needs
+     (it runs `fetch logs | limit 1`)
    - `storage:metrics:read` — timeseries / metrics
-   - `storage:logs:read` — logs (also used by the **Save & test** health probe)
-   - `storage:events:read` — events / problems
+   - `storage:events:read` — events / problems (`dt.davis.events`, `dt.davis.problems`)
    - `storage:spans:read` — traces
-   - `storage:buckets:read` — required alongside the table scopes above
+   - `storage:bizevents:read` — business events _(optional)_
+   - `storage:system:read` — the visual builder's source dropdown
+     (`fetch dt.system.data_objects`)
+   - `storage:smartscape:read` — `smartscapeNodes` topology queries (e.g. the
+     host-name variable example below)
 2. In Grafana → **Connections → Data sources → Add** → search **Grail (DQL)**.
 3. Fill in:
    - **Tenant URL** — `https://<env>.apps.dynatrace.com`
@@ -274,15 +282,15 @@ input (defaults to `content`).
 
 ## Troubleshooting
 
-| Symptom                                        | Likely cause / fix                                                                                                                           |
-| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Save & test:** "Authentication rejected"     | Token is invalid or expired. Create a fresh `dt0s16.*` platform token.                                                                       |
-| **Save & test:** "Token lacks required scopes" | Add the missing `storage:*:read` scope (see [Configuration](#configuration)). The probe needs `storage:logs:read`.                           |
-| **Save & test:** "Cannot reach …" / TLS error  | Tenant URL is wrong or unreachable. Use the `https://<env>.apps.dynatrace.com` (platform) host, not the classic `*.live.dynatrace.com` host. |
-| Query returns empty but no error               | Your time range has no data, or a `filter` is too strict. Check the panel's **Inspect → Query** for the expanded DQL and any Grail notices.  |
-| "dqlQuery is empty"                            | The panel has no DQL text. Enter a query or switch to the visual builder.                                                                    |
-| Timeouts on heavy queries                      | Raise **Query timeout (s)** in the data source config and narrow the DQL (`limit`, tighter filters, longer bucket size).                     |
-| Percentile/median returns empty for metrics    | DQL needs an explicit `rollup` — the visual builder adds `, 95, rollup: avg` automatically; do the same in hand-written DQL.                 |
+| Symptom                                        | Likely cause / fix                                                                                                                            |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Save & test:** "Authentication rejected"     | Token is invalid or expired. Create a fresh `dt0s16.*` platform token.                                                                        |
+| **Save & test:** "Token lacks required scopes" | Add the missing `storage:*:read` scope (see [Configuration](#configuration)). The probe needs `storage:logs:read` and `storage:buckets:read`. |
+| **Save & test:** "Cannot reach …" / TLS error  | Tenant URL is wrong or unreachable. Use the `https://<env>.apps.dynatrace.com` (platform) host, not the classic `*.live.dynatrace.com` host.  |
+| Query returns empty but no error               | Your time range has no data, or a `filter` is too strict. Check the panel's **Inspect → Query** for the expanded DQL and any Grail notices.   |
+| "dqlQuery is empty"                            | The panel has no DQL text. Enter a query or switch to the visual builder.                                                                     |
+| Timeouts on heavy queries                      | Raise **Query timeout (s)** in the data source config and narrow the DQL (`limit`, tighter filters, longer bucket size).                      |
+| Percentile/median returns empty for metrics    | DQL needs an explicit `rollup` — the visual builder adds `, 95, rollup: avg` automatically; do the same in hand-written DQL.                  |
 
 Grail sampling / scan-limit notices are surfaced as panel notices — open
 **Inspect → Query** to see them.
