@@ -1,53 +1,94 @@
-# Grail (DQL) data source for Grafana
+# Dynatrace Grail (DQL) data source for Grafana
 
-Grafana data source for [Dynatrace Grail / DQL](https://docs.dynatrace.com/docs/discover-dynatrace/references/dynatrace-query-language).
+Query [Dynatrace Grail](https://docs.dynatrace.com/docs/discover-dynatrace/references/dynatrace-query-language)
+from Grafana using **Dynatrace Query Language (DQL)** — the same syntax you
+already write in the Dynatrace UI. Build panels, alert rules, dashboard
+variables, and annotations against a Dynatrace platform tenant, with metrics,
+logs, traces, and events rendered as native Grafana visualizations.
 
-Query a Dynatrace platform tenant from Grafana panels, alert rules, and dashboard variables — without leaving the DQL syntax you already use in the Dynatrace UI.
+There is no official Dynatrace Grail data source for Grafana — this plugin
+fills that gap and speaks DQL end to end.
 
-## Status
+[![Release](https://img.shields.io/github/v/release/discostu105/grafana-grail-datasource?sort=semver&label=release)](https://github.com/discostu105/grafana-grail-datasource/releases)
+[![License](https://img.shields.io/github/license/discostu105/grafana-grail-datasource)](LICENSE)
+![Grafana](https://img.shields.io/badge/Grafana-%E2%89%A5%2012.3.0-F46800?logo=grafana&logoColor=white)
 
-Beta. Tracks the milestones in [`docs/`](docs/). Milestones 1 (correctness &
-configurability), 2 (Grafana-native integrations) and 3 (editor polish, traces,
-backend resilience) are landed.
+<!-- TODO(screenshot): hero image — the Monaco DQL editor mid-query with
+     syntax highlighting and the Grail-backed autocomplete dropdown open,
+     against a generic query (e.g. host CPU or service requests). This is the
+     product's strongest visual; capture before catalog submission and add:
+     ![DQL editor with Grail-backed autocomplete](src/img/screenshot-editor.png) -->
 
-| Capability                                                                    | Status |
-| ----------------------------------------------------------------------------- | ------ |
-| Per-instance config (URL + SecureJSON token)                                  | ✅     |
-| `$__timeFrom/To/from/to/interval/timeFilter` macros (server-side)             | ✅     |
-| Template variable interpolation (`$var`, `${var:csv}`)                        | ✅     |
-| Timeseries + table result shapes                                              | ✅     |
-| Real Grail `timeframe + interval` shape (not just synthetic timestamp arrays) | ✅     |
-| Unit + display-name field config from labels                                  | ✅     |
-| Alerting + Annotations                                                        | ✅     |
-| Variable queries (`metricFindQuery`)                                          | ✅     |
-| Logs visualization                                                            | ✅     |
-| Ad-hoc filters                                                                | ✅     |
-| Monaco DQL editor (highlighting, Format, Grail-backed autocomplete)           | ✅     |
-| Visual query builder                                                          | ✅     |
-| Backend retry + concurrency cap + Prometheus metrics                          | ✅     |
-| Traces (trace list + detail, trace-to-logs / trace-to-metrics)                | ✅     |
+## Features
 
-**Known limitations:** annotations work via Grafana's standard "use query
-result" path (no dedicated time/title/text column editor yet). See the
-milestone docs for the per-requirement status:
-[`docs/milestone-1-foundations.md`](docs/milestone-1-foundations.md),
-[`docs/milestone-2-grafana-native.md`](docs/milestone-2-grafana-native.md),
-[`docs/milestone-3-editor-traces-polish.md`](docs/milestone-3-editor-traces-polish.md).
+- **Write DQL, not a new query language.** Author queries in a Monaco editor
+  with DQL syntax highlighting, one-keystroke formatting (`Shift+Alt+F`), and
+  **autocomplete backed by your live Grail schema** — or build them visually
+  with the [Builder/Code toggle](#querying-grail-with-dql), whose source list
+  is populated from your tenant's own data objects.
+- **Metrics, logs, and tables as native panels.** Timeseries and table result
+  shapes, real Grail `timeframe + interval` series (not synthetic timestamp
+  arrays), unit and display-name field config from labels, and a logs view
+  with [derived fields](#logs), a log-volume histogram, and log-row context.
+- **Distributed traces.** A clickable trace list, full span detail (an
+  OpenTelemetry-compatible field set), and **trace-to-logs / trace-to-metrics**
+  correlation back into Grail. See [Traces](#traces).
+- **Works everywhere in Grafana.** [Alert rules](#alerting),
+  [annotations](#annotations), [template/variable queries](#variables), and
+  [ad-hoc filters](#ad-hoc-filters) — all sharing the same
+  [server-side macro expansion](#macros), so an alert evaluates over its own
+  window exactly like the panel it came from.
+- **Production backend.** A Go backend with retry-and-backoff on `429`/`5xx`
+  (honoring `Retry-After`), a per-instance concurrency cap, request-context
+  cancellation, and Prometheus self-metrics.
+
+## Requirements
+
+- A **Dynatrace platform tenant** — the `https://<env>.apps.dynatrace.com`
+  host (not the classic `*.live.dynatrace.com` host).
+- A **platform token** (`dt0s16.*`) with the scopes for the data you query
+  (see [Configuration](#configuration)).
+- **Grafana ≥ 12.3.0.**
+
+## Installation
+
+Once the plugin is available in the [Grafana plugin catalog](https://grafana.com/grafana/plugins/):
+
+```bash
+grafana-cli plugins install discostu105-grail-datasource
+```
+
+Then restart Grafana and add the data source (below).
+
+To run a self-hosted or locally built copy, drop the packaged plugin into
+Grafana's plugin directory, or build it from source — see
+[CONTRIBUTING.md](CONTRIBUTING.md). An unsigned local build also needs
+
+```ini
+[plugins]
+allow_loading_unsigned_plugins = discostu105-grail-datasource
+```
+
+in `grafana.ini`.
 
 ## Configuration
 
-1. **Create a platform token** (`dt0s16.*`) in Dynatrace → **Settings → Access Tokens → Platform tokens**. Grant the scopes for the data you intend to query:
+1. **Create a platform token** (`dt0s16.*`) in Dynatrace →
+   **Settings → Access Tokens → Platform tokens**. Grant the scopes for the
+   data you intend to query:
    - `storage:metrics:read` — timeseries / metrics
-   - `storage:logs:read` — logs (also used by the health probe)
+   - `storage:logs:read` — logs (also used by the **Save & test** health probe)
    - `storage:events:read` — events / problems
    - `storage:spans:read` — traces
    - `storage:buckets:read` — required alongside the table scopes above
-2. In Grafana → Connections → Data sources → Add → search **Grail (DQL)**.
+2. In Grafana → **Connections → Data sources → Add** → search **Grail (DQL)**.
 3. Fill in:
    - **Tenant URL** — `https://<env>.apps.dynatrace.com`
-   - **API token** — your `dt0s16.*` platform token (stored encrypted via `secureJsonData`).
-   - **Query timeout (s)** — default 30, raise for heavy DQL.
-   - **Default timeframe** — used when no panel range exists (variable queries, alerting probes). Go duration string, default `1h`.
+   - **API token** — your `dt0s16.*` platform token (stored encrypted via
+     `secureJsonData`).
+   - **Query timeout (s)** — default 30; raise for heavy DQL.
+   - **Default timeframe** — used when no panel range exists (variable queries,
+     alerting probes). A Go duration string, default `1h`.
 4. Click **Save & test**.
 
 ## Provisioning
@@ -55,7 +96,7 @@ milestone docs for the per-requirement status:
 ```yaml
 apiVersion: 1
 datasources:
-  - name: Dynatrace
+  - name: Dynatrace Grail
     type: discostu105-grail-datasource
     access: proxy
     jsonData:
@@ -66,6 +107,22 @@ datasources:
       apiToken: ${DT_TOKEN}
 ```
 
+## Querying Grail with DQL
+
+Each query has a **type** (Timeseries / Logs / Traces) and an editor **mode**:
+
+- **Code** — a Monaco editor for DQL: syntax highlighting, bracket matching,
+  `Ctrl/Cmd + Enter` to run, `Shift + Alt + F` (or the **Format** button) to
+  pretty-print, and autocomplete driven by your tenant's live Grail schema.
+- **Builder** — a form (data source, filters, group-by, aggregation, time
+  bucketing) that generates DQL for you. The source dropdown is populated live
+  from your tenant's fetchable tables, plus pinned `metrics` and
+  `smartscapeNodes` entries. Switching from Builder to Code keeps the generated
+  query; switching back warns before overwriting hand-written DQL.
+
+<!-- TODO(screenshot): the visual Builder showing the live source dropdown +
+     a filter / group-by / aggregation row, with the generated DQL visible. -->
+
 ## Example queries
 
 **Timeseries** — host CPU bucketed by host:
@@ -74,16 +131,26 @@ datasources:
 timeseries cpu = avg(dt.host.cpu.usage), by:{dt.smartscape.host}, from:"$__timeFrom", to:"$__timeTo"
 ```
 
-Bind the window with the `from:`/`to:` parameters: Grail scopes the metric scan to the panel/alert range at the source (pushed down), and the bound is explicit rather than relying on the request's *default* timeframe — which any in-query timeframe overrides and which isn't present for every caller. **Don't** post-filter with `$__timeFilter(timestamp)`: a `timeseries` result has no per-row `timestamp` (only `timeframe`/`interval` metadata), and filtering after aggregation can't shrink the scan.
+Bind the window with the `from:`/`to:` parameters: Grail scopes the metric scan
+to the panel/alert range at the source (pushed down), and the bound is explicit
+rather than relying on the request's *default* timeframe — which any in-query
+timeframe overrides and which isn't present for every caller. **Don't**
+post-filter a timeseries with `$__timeFilter(timestamp)`: a `timeseries` result
+has no per-row `timestamp` (only `timeframe`/`interval` metadata), and filtering
+after aggregation can't shrink the scan.
 
-**Records** — `fetch` takes the same `from:`/`to:` parameters, so bind the scan there too:
+**Records** — `fetch` takes the same `from:`/`to:` parameters, so bind the scan
+there too:
 
 ```dql
 fetch dt.davis.events, from:"$__timeFrom", to:"$__timeTo"
 | fields timestamp = start_time, title = event.name, text = description
 ```
 
-Use `$__timeFilter(<field>)` (see [Macros](#macros)) only for the narrower case of filtering rows on a *specific* timestamp field that differs from the scan bound — e.g. add `| filter $__timeFilter(start_time)` to keep only events whose `start_time` (not the record timestamp) falls in the window. It's a row filter, never a substitute for bounding the scan, and it can't shrink a `timeseries` result.
+Use `$__timeFilter(<field>)` (see [Macros](#macros)) only for the narrower case
+of filtering rows on a *specific* timestamp field that differs from the scan
+bound — e.g. `| filter $__timeFilter(start_time)`. It's a row filter, never a
+substitute for bounding the scan, and it can't shrink a `timeseries` result.
 
 **Table** — top hosts by current CPU:
 
@@ -95,7 +162,21 @@ timeseries cpu = avg(dt.host.cpu.usage), by:{dt.smartscape.host}, from:"$__timeF
 | sort current desc
 ```
 
-**Variable query** — list of host names for a dashboard dropdown:
+**Traces** — fetch spans and set the query type to **Traces**; the plugin maps
+them onto Grafana's trace view:
+
+```dql
+fetch spans, from:"$__timeFrom", to:"$__timeTo"
+| filter service.name == "frontend"
+| sort start_time desc
+| limit 200
+```
+
+Rows render as a clickable trace list; selecting a trace opens the span
+waterfall, and trace-to-logs / trace-to-metrics links (configured on the data
+source) jump from a span back into Grail.
+
+**Variable query** — host names for a dashboard dropdown:
 
 ```dql
 smartscapeNodes "HOST"
@@ -116,7 +197,8 @@ smartscapeNodes "HOST"
 | `$__timeFilter(<field>)`      | `<field> >= "<from>" and <field> <= "<to>"`                            |
 | `$__timeFilter()`             | same, with `field=timestamp`                                           |
 
-Expansion runs server-side, so alert rules get the same substitutions as panels.
+Expansion runs **server-side**, so alert rules get the same substitutions as
+panels.
 
 ## Coming from PromQL or SQL?
 
@@ -139,24 +221,26 @@ Key gotchas: equality is `==` (not `=`), boolean operators are lowercase
 `and` / `or`, and time bucketing on logs/events/spans uses `makeTimeseries`
 (use `timeseries` only for the metrics store).
 
-## Alerting
+## Grafana-native integrations
+
+### Alerting
 
 Alert rules run the same DQL path as panels, with the same macro expansion. Use
 a query that returns a numeric timeseries and add a Grafana threshold/reduce
-expression on top. Example — alert when average host CPU exceeds 90%:
+expression on top — e.g. alert when average host CPU exceeds 90%:
 
 ```dql
 timeseries cpu = avg(dt.host.cpu.usage), by:{dt.smartscape.host}, from:"$__timeFrom", to:"$__timeTo"
 ```
 
-In the alert rule, add a **Reduce** (Last) and a **Threshold** (`IS ABOVE 90`)
-expression on the `cpu` series. Because macros expand server-side, the rule
-evaluates over the alert's own time window — no panel range required.
+In the rule, add a **Reduce** (Last) and a **Threshold** (`IS ABOVE 90`) on the
+`cpu` series. Because macros expand server-side, the rule evaluates over the
+alert's own time window — no panel range required.
 
-## Annotations
+### Annotations
 
-Set the dashboard annotation query's data source to this plugin and write DQL
-that returns a time column plus optional `text` / `title` columns, e.g.:
+Set the annotation query's data source to this plugin and write DQL that
+returns a time column plus optional `text` / `title` columns:
 
 ```dql
 fetch events, from:"$__timeFrom", to:"$__timeTo"
@@ -164,9 +248,37 @@ fetch events, from:"$__timeFrom", to:"$__timeTo"
 | fields timestamp, title = event.name, text = event.description
 ```
 
-Grafana's standard "use query result" annotation path renders one marker per
-row. (A dedicated time/title/text column picker is on the roadmap; today the
-column names must match Grafana's expectations as shown above.)
+Grafana's standard "use query result" path renders one marker per row.
+
+### Variables
+
+Dashboard **query variables** run any DQL that returns a column of values
+(`metricFindQuery`); a `text` / `value` column pair becomes the dropdown's
+label / value. See the [variable example](#example-queries) above.
+
+### Ad-hoc filters
+
+Add an **ad-hoc filters** variable bound to this data source. Filter keys and
+values are discovered from your tenant via Grail autocomplete (merged with a
+curated set of common keys), and selected filters are appended to matching
+queries automatically.
+
+### Traces
+
+Query type **Traces** maps `fetch spans` rows onto Grafana's
+OpenTelemetry-compatible traces frame (`traceID`, `spanID`, `parentSpanID`,
+`operationName`, `serviceName`, `startTime`, `duration`, `kind`, `statusCode`,
+`tags`). A roll-up query renders a clickable trace list; a per-span query
+renders the waterfall. Configure **Trace to logs** and **Trace to metrics** on
+the data source to jump from a span back into Grail.
+
+### Logs
+
+Query type **Logs** renders the logs panel with a severity-broken-down
+log-volume histogram, "show context" for surrounding lines, and **derived
+fields** — regex matches on the log body become clickable link columns (e.g. a
+trace ID → a trace query). Set the body column with the **Log message field**
+input (defaults to `content`).
 
 ## Troubleshooting
 
@@ -178,24 +290,29 @@ column names must match Grafana's expectations as shown above.)
 | Query returns empty but no error               | Your time range has no data, or a `filter` is too strict. Check the panel's **Inspect → Query** for the expanded DQL and any Grail notices.  |
 | "dqlQuery is empty"                            | The panel has no DQL text. Enter a query or switch to the visual builder.                                                                    |
 | Timeouts on heavy queries                      | Raise **Query timeout (s)** in the data source config and narrow the DQL (`limit`, tighter filters, longer bucket size).                     |
-| Percentile/median returns empty for metrics    | DQL needs an explicit `rollup` for those — the visual builder adds `, 95, rollup: avg` automatically; do the same in hand-written DQL.       |
+| Percentile/median returns empty for metrics    | DQL needs an explicit `rollup` — the visual builder adds `, 95, rollup: avg` automatically; do the same in hand-written DQL.                  |
 
-Grail sampling/scan-limit notices are surfaced as panel notices — open
+Grail sampling / scan-limit notices are surfaced as panel notices — open
 **Inspect → Query** to see them.
 
-## Build
+## Known limitations
 
-```bash
-npm install
-npm run build         # frontend
-mage -v buildAll      # backend, all archs
-```
+- Annotations use Grafana's standard "use query result" path; the result
+  columns must be named `time`/`timestamp`, `title`, and `text` (there is no
+  dedicated column picker).
 
-## Develop
+## Documentation & roadmap
 
-```bash
-npm run dev           # webpack watch
-npm run server        # docker compose: grafana + this plugin
-```
+- **[`docs/`](docs/)** — the development record and roadmap (per-milestone
+  requirements and status).
+- **[`CHANGELOG.md`](CHANGELOG.md)** — version history (Keep a Changelog).
+- **[Dynatrace DQL reference](https://docs.dynatrace.com/docs/discover-dynatrace/references/dynatrace-query-language)** —
+  the query language itself.
 
-`provisioning/datasources/datasources.yml` reads `DT_TENANT_URL` and `DT_TOKEN` from the environment for the dev datasource.
+## Contributing & support
+
+Bug reports and feature requests:
+[GitHub issues](https://github.com/discostu105/grafana-grail-datasource/issues).
+Security reports: see [SECURITY.md](SECURITY.md). Development setup, build, and
+test instructions are in [CONTRIBUTING.md](CONTRIBUTING.md). Licensed under
+[Apache-2.0](LICENSE).
