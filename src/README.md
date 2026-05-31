@@ -94,3 +94,10 @@ Report bugs and request features on the
 ## License
 
 [Apache-2.0](https://github.com/discostu105/grafana-grail-datasource/blob/main/LICENSE)
+
+## Disclaimer
+
+This is an unofficial, community-maintained plugin. It is **not** affiliated
+with, endorsed by, or sponsored by Dynatrace LLC. "Dynatrace", "Grail", and
+"DQL" are trademarks of Dynatrace LLC, used here only to describe what the
+plugin connects to.

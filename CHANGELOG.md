@@ -6,8 +6,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.13.0] - 2026-05-31
+
 ### Added
 
+- Trademark / affiliation disclaimer in the README and catalog page
+  (community plugin, not affiliated with or endorsed by Dynatrace LLC),
+  ahead of Grafana plugin catalog submission.
 - **Format DQL** action in the query editor — a toolbar button and the
   standard `Shift + Alt + F` binding lay out one top-level pipe command per
   line via a pure, idempotent `formatDql` formatter (also registered as a

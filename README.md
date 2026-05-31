@@ -316,3 +316,10 @@ Bug reports and feature requests:
 Security reports: see [SECURITY.md](SECURITY.md). Development setup, build, and
 test instructions are in [CONTRIBUTING.md](CONTRIBUTING.md). Licensed under
 [Apache-2.0](LICENSE).
+
+## Disclaimer
+
+This is an unofficial, community-maintained plugin. It is **not** affiliated
+with, endorsed by, or sponsored by Dynatrace LLC. "Dynatrace", "Grail", and
+"DQL" are trademarks of Dynatrace LLC, used here only to describe what the
+plugin connects to.
