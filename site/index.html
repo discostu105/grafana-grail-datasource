@@ -43,7 +43,13 @@
         background: var(--bg);
         color: var(--text);
         font-family:
-          "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+          'Inter',
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          Roboto,
+          Helvetica,
+          Arial,
           sans-serif;
         line-height: 1.6;
         -webkit-font-smoothing: antialiased;
@@ -99,11 +105,7 @@
       .hero {
         padding: 72px 0 40px;
         text-align: center;
-        background: radial-gradient(
-          ellipse 80% 60% at 50% -10%,
-          rgba(111, 59, 245, 0.18),
-          transparent 70%
-        );
+        background: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(111, 59, 245, 0.18), transparent 70%);
       }
       .hero .badge-pill {
         display: inline-block;
@@ -250,7 +252,7 @@
         font-size: 0.88rem;
       }
       code {
-        font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+        font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
       }
       ul.reqs {
         margin: 0;
@@ -306,23 +308,14 @@
       <section class="hero">
         <div class="wrap">
           <span class="badge-pill">Community Grafana data source plugin</span>
-          <h1>
-            Query <span class="grad">Dynatrace Grail</span><br />from Grafana with DQL
-          </h1>
+          <h1>Query <span class="grad">Dynatrace Grail</span><br />from Grafana with DQL</h1>
           <p class="lead">
-            Write Dynatrace Query Language — the same syntax you use in the Dynatrace UI —
-            and render metrics, logs, traces, and events as native Grafana panels. Alerts,
-            annotations, and variables included.
+            Write Dynatrace Query Language — the same syntax you use in the Dynatrace UI — and render metrics, logs,
+            traces, and events as native Grafana panels. Alerts, annotations, and variables included.
           </p>
           <div class="cta">
-            <a
-              class="btn btn-primary"
-              href="https://github.com/discostu105/grafana-grail-datasource"
-              >View on GitHub</a
-            >
-            <a
-              class="btn btn-secondary"
-              href="https://github.com/discostu105/grafana-grail-datasource/releases"
+            <a class="btn btn-primary" href="https://github.com/discostu105/grafana-grail-datasource">View on GitHub</a>
+            <a class="btn btn-secondary" href="https://github.com/discostu105/grafana-grail-datasource/releases"
               >Releases</a
             >
             <a class="btn btn-secondary" href="#quickstart">Quick start</a>
@@ -334,9 +327,7 @@
                 alt="Latest release"
             /></a>
             <a href="https://github.com/discostu105/grafana-grail-datasource/blob/main/LICENSE"
-              ><img
-                src="https://img.shields.io/github/license/discostu105/grafana-grail-datasource"
-                alt="License"
+              ><img src="https://img.shields.io/github/license/discostu105/grafana-grail-datasource" alt="License"
             /></a>
             <img
               src="https://img.shields.io/badge/Grafana-%E2%89%A5%2012.3.0-F46800?logo=grafana&logoColor=white"
@@ -362,52 +353,49 @@
               <span class="ic">✍️</span>
               <h3>Write DQL</h3>
               <p>
-                A Monaco editor with DQL syntax highlighting, one-keystroke formatting, and
-                autocomplete backed by your live Grail schema — or build queries visually with
-                the Builder/Code toggle.
+                A Monaco editor with DQL syntax highlighting, one-keystroke formatting, and autocomplete backed by your
+                live Grail schema — or build queries visually with the Builder/Code toggle.
               </p>
             </div>
             <div class="card">
               <span class="ic">📊</span>
               <h3>Metrics, logs &amp; tables</h3>
               <p>
-                Timeseries and table result shapes, real Grail timeframe + interval series, unit
-                and display-name field config from labels, plus a logs view with derived fields,
-                a log-volume histogram, and log-row context.
+                Timeseries and table result shapes, real Grail timeframe + interval series, unit and display-name field
+                config from labels, plus a logs view with derived fields, a log-volume histogram, and log-row context.
               </p>
             </div>
             <div class="card">
               <span class="ic">🔗</span>
               <h3>Distributed traces</h3>
               <p>
-                A clickable trace list, full OpenTelemetry-compatible span detail, and
-                trace-to-logs / trace-to-metrics correlation back into Grail.
+                A clickable trace list, full OpenTelemetry-compatible span detail, and trace-to-logs / trace-to-metrics
+                correlation back into Grail.
               </p>
             </div>
             <div class="card">
               <span class="ic">🧩</span>
               <h3>Works everywhere</h3>
               <p>
-                Alert rules, annotations, template/variable queries, and ad-hoc filters — all
-                sharing the same server-side macro expansion, so an alert evaluates over its own
-                window exactly like the panel it came from.
+                Alert rules, annotations, template/variable queries, and ad-hoc filters — all sharing the same
+                server-side macro expansion, so an alert evaluates over its own window exactly like the panel it came
+                from.
               </p>
             </div>
             <div class="card">
               <span class="ic">⚙️</span>
               <h3>Production backend</h3>
               <p>
-                A Go backend with retry-and-backoff on 429/5xx (honoring Retry-After), a
-                per-instance concurrency cap, request-context cancellation, and Prometheus
-                self-metrics.
+                A Go backend with retry-and-backoff on 429/5xx (honoring Retry-After), a per-instance concurrency cap,
+                request-context cancellation, and Prometheus self-metrics.
               </p>
             </div>
             <div class="card">
               <span class="ic">🔁</span>
               <h3>Coming from PromQL or SQL?</h3>
               <p>
-                DQL is pipeline-based and readable. The README maps common PromQL and SQL
-                patterns to their DQL equivalents to get you productive fast.
+                DQL is pipeline-based and readable. The README maps common PromQL and SQL patterns to their DQL
+                equivalents to get you productive fast.
               </p>
             </div>
           </div>
@@ -439,10 +427,8 @@
               <pre><code>grafana-cli plugins install \
   discostu105-grail-datasource</code></pre>
               <p class="note">
-                Then restart Grafana and add the data source. For a self-hosted or locally built
-                copy, see
-                <a
-                  href="https://github.com/discostu105/grafana-grail-datasource/blob/main/CONTRIBUTING.md"
+                Then restart Grafana and add the data source. For a self-hosted or locally built copy, see
+                <a href="https://github.com/discostu105/grafana-grail-datasource/blob/main/CONTRIBUTING.md"
                   >CONTRIBUTING.md</a
                 >.
               </p>
@@ -456,8 +442,7 @@
                   <code>*.live.dynatrace.com</code> host).
                 </li>
                 <li>
-                  A <strong>platform token</strong> (<code>dt0s16.*</code>) with the scopes for
-                  the data you query.
+                  A <strong>platform token</strong> (<code>dt0s16.*</code>) with the scopes for the data you query.
                 </li>
                 <li><strong>Grafana ≥ 12.3.0.</strong></li>
               </ul>
@@ -472,18 +457,15 @@
         <div class="links">
           <a href="https://github.com/discostu105/grafana-grail-datasource">GitHub repository</a>
           <a href="https://github.com/discostu105/grafana-grail-datasource/issues">Issues</a>
-          <a href="https://github.com/discostu105/grafana-grail-datasource/blob/main/README.md"
-            >Documentation</a
-          >
-          <a
-            href="https://docs.dynatrace.com/docs/discover-dynatrace/references/dynatrace-query-language"
+          <a href="https://github.com/discostu105/grafana-grail-datasource/blob/main/README.md">Documentation</a>
+          <a href="https://docs.dynatrace.com/docs/discover-dynatrace/references/dynatrace-query-language"
             >DQL reference</a
           >
         </div>
         <p class="disclaimer">
-          This is an unofficial, community-maintained plugin. It is <strong>not</strong> affiliated
-          with, endorsed by, or sponsored by Dynatrace LLC. “Dynatrace”, “Grail”, and “DQL” are
-          trademarks of Dynatrace LLC, used here only to describe what the plugin connects to.
+          This is an unofficial, community-maintained plugin. It is <strong>not</strong> affiliated with, endorsed by,
+          or sponsored by Dynatrace LLC. “Dynatrace”, “Grail”, and “DQL” are trademarks of Dynatrace LLC, used here only
+          to describe what the plugin connects to.
         </p>
       </div>
     </footer>
