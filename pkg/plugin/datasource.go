@@ -34,7 +34,7 @@ const (
 	// pluginVersion is mirrored from package.json / plugin.json. Bump both
 	// together on release; surfaced in the User-Agent so Dynatrace can
 	// correlate plugin traffic.
-	pluginVersion = "1.13.0"
+	pluginVersion = "1.13.1"
 	userAgent     = "discostu105-grail-datasource/" + pluginVersion
 	// healthProbeQuery is a syntactically minimal DQL string used by
 	// CheckHealth's Verify probe. It exercises auth + network without
