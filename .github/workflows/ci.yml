@@ -21,8 +21,11 @@ jobs:
       plugin-version: ${{ steps.metadata.outputs.plugin-version }}
       has-e2e: ${{ steps.check-for-e2e.outputs.has-e2e }}
       has-backend: ${{ steps.check-for-backend.outputs.has-backend }}
-    env:
-      GRAFANA_ACCESS_POLICY_TOKEN: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN }}
+    # NOTE: GRAFANA_ACCESS_POLICY_TOKEN is intentionally NOT exposed at the job
+    # level while signing is disabled — a job-wide secret leaks into every step
+    # (including `npm ci`, which runs untrusted dependency lifecycle scripts).
+    # When re-enabling the Sign plugin step after catalog approval, add the token
+    # to THAT step's own `env:` block, not here.
     steps:
       - uses: actions/checkout@v6
         with:
@@ -118,7 +121,9 @@ jobs:
       # policy_token in release.yml) once the plugin is approved.
       # - name: Sign plugin
       #   run: npm run sign
-      #   if: ${{ env.GRAFANA_ACCESS_POLICY_TOKEN != '' && github.event_name != 'pull_request' }}
+      #   if: ${{ github.event_name != 'pull_request' }}
+      #   env:
+      #     GRAFANA_ACCESS_POLICY_TOKEN: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN }}
 
       - name: Get plugin metadata
         id: metadata
