@@ -20,12 +20,16 @@ jobs:
           persist-credentials: false
 
       - uses: grafana/plugin-actions/build-plugin@build-plugin/v1.2.0
-        # Plugin signing. Generate an access policy token and store it as the
-        # GRAFANA_ACCESS_POLICY_TOKEN repository secret. See:
-        # https://grafana.com/developers/plugin-tools/publish-a-plugin/sign-a-plugin#generate-an-access-policy-token
         with:
-          policy_token: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN }}
           # build-plugin@v1.2.0 defaults go-version to "1.25", but go.mod requires
           # Go 1.26.3 (the mage backend build runs with GOTOOLCHAIN=local, so it
           # cannot auto-download a newer toolchain). Pin it to match go.mod.
           go-version: '1.26.3'
+          # NOTE: policy_token is intentionally omitted so the action SKIPS signing
+          # and still publishes a draft GitHub release with the unsigned .zip + .sha1.
+          # A public plugin CANNOT be signed until the Grafana team reviews it and
+          # grants a signature level; attempting to sign beforehand returns HTTP 409
+          # (InvalidArgument). First-time catalog submission does not require a signed
+          # archive. After the plugin is approved, re-add:
+          #   policy_token: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN }}
+          # to sign subsequent release versions.

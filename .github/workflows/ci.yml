@@ -109,14 +109,16 @@ jobs:
             echo "has-e2e=true" >> $GITHUB_OUTPUT
           fi
 
-      - name: Sign plugin
-        run: npm run sign
-        # Sign only on push to main/master (and in release.yml on tags), not on
-        # pull requests. Signing requires the plugin ID prefix to match the
-        # GRAFANA_ACCESS_POLICY_TOKEN account's org slug; gating it off PRs keeps
-        # PR CI green (e2e already allows the unsigned plugin via
-        # GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS).
-        if: ${{ env.GRAFANA_ACCESS_POLICY_TOKEN != '' && github.event_name != 'pull_request' }}
+      # Plugin signing is DISABLED until the plugin is published in the Grafana
+      # catalog. A public plugin cannot be signed until the Grafana team reviews
+      # it and grants a signature level; signing beforehand returns HTTP 409
+      # (InvalidArgument). First-time submission uses an unsigned archive, and
+      # e2e already loads the unsigned plugin via
+      # GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS. Re-enable this step (and the
+      # policy_token in release.yml) once the plugin is approved.
+      # - name: Sign plugin
+      #   run: npm run sign
+      #   if: ${{ env.GRAFANA_ACCESS_POLICY_TOKEN != '' && github.event_name != 'pull_request' }}
 
       - name: Get plugin metadata
         id: metadata
