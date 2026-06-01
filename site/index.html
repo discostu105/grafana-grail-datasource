@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dynatrace Grail (DQL) data source for Grafana</title>
+    <meta
+      name="description"
+      content="Query Dynatrace Grail with DQL from Grafana — metrics, logs, traces, and events as native panels, plus alerting, annotations, and template variables."
+    />
+    <link rel="icon" type="image/svg+xml" href="img/logo.svg" />
+
+    <!-- Open Graph / social -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Dynatrace Grail (DQL) data source for Grafana" />
+    <meta
+      property="og:description"
+      content="Write DQL in Grafana — metrics, logs, traces, and events as native panels, with alerting, annotations, and variables."
+    />
+    <meta property="og:image" content="img/screenshot-editor.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <style>
+      :root {
+        --bg: #0b0c0e;
+        --bg-2: #15171b;
+        --bg-3: #1c1f24;
+        --border: #2a2e35;
+        --text: #e6e9ef;
+        --muted: #9aa3b2;
+        --accent: #f46800; /* Grafana orange */
+        --accent-2: #6f3bf5; /* Dynatrace purple */
+        --radius: 12px;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family:
+          'Inter',
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          Roboto,
+          Helvetica,
+          Arial,
+          sans-serif;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+      a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+      .wrap {
+        max-width: 1040px;
+        margin: 0 auto;
+        padding: 0 20px;
+      }
+      header.nav {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        backdrop-filter: blur(8px);
+        background: rgba(11, 12, 14, 0.8);
+        border-bottom: 1px solid var(--border);
+      }
+      .nav-inner {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 20px;
+        max-width: 1040px;
+        margin: 0 auto;
+      }
+      .nav-inner img {
+        width: 28px;
+        height: 28px;
+      }
+      .nav-inner .name {
+        font-weight: 600;
+      }
+      .nav-inner .spacer {
+        flex: 1;
+      }
+      .nav-links a {
+        color: var(--muted);
+        margin-left: 18px;
+        font-size: 0.92rem;
+      }
+      .nav-links a:hover {
+        color: var(--text);
+        text-decoration: none;
+      }
+
+      .hero {
+        padding: 72px 0 40px;
+        text-align: center;
+        background: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(111, 59, 245, 0.18), transparent 70%);
+      }
+      .hero .badge-pill {
+        display: inline-block;
+        font-size: 0.78rem;
+        color: var(--muted);
+        border: 1px solid var(--border);
+        background: var(--bg-2);
+        padding: 4px 12px;
+        border-radius: 999px;
+        margin-bottom: 20px;
+      }
+      .hero h1 {
+        font-size: clamp(1.9rem, 5vw, 3rem);
+        line-height: 1.15;
+        margin: 0 0 16px;
+        letter-spacing: -0.02em;
+      }
+      .hero h1 .grad {
+        background: linear-gradient(90deg, var(--accent), var(--accent-2));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      .hero p.lead {
+        font-size: 1.15rem;
+        color: var(--muted);
+        max-width: 680px;
+        margin: 0 auto 28px;
+      }
+      .cta {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-bottom: 22px;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 11px 20px;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 0.95rem;
+        border: 1px solid var(--border);
+      }
+      .btn:hover {
+        text-decoration: none;
+      }
+      .btn-primary {
+        background: var(--accent);
+        color: #1a0e00;
+        border-color: var(--accent);
+      }
+      .btn-primary:hover {
+        filter: brightness(1.08);
+      }
+      .btn-secondary {
+        background: var(--bg-2);
+        color: var(--text);
+      }
+      .btn-secondary:hover {
+        background: var(--bg-3);
+      }
+      .badges {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-top: 8px;
+      }
+      .badges img {
+        height: 20px;
+      }
+
+      .shot {
+        margin: 48px auto 0;
+        max-width: 960px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+      }
+      .shot img {
+        display: block;
+        width: 100%;
+      }
+
+      section {
+        padding: 56px 0;
+      }
+      section h2 {
+        font-size: 1.6rem;
+        margin: 0 0 8px;
+        letter-spacing: -0.01em;
+      }
+      section .sub {
+        color: var(--muted);
+        margin: 0 0 28px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 16px;
+      }
+      .card {
+        background: var(--bg-2);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 22px;
+      }
+      .card h3 {
+        margin: 0 0 8px;
+        font-size: 1.05rem;
+      }
+      .card p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+      .card .ic {
+        font-size: 1.4rem;
+        margin-bottom: 10px;
+        display: block;
+      }
+
+      .two-col {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+      }
+      @media (max-width: 760px) {
+        .two-col {
+          grid-template-columns: 1fr;
+        }
+      }
+      pre {
+        background: var(--bg-3);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 16px;
+        overflow-x: auto;
+        font-size: 0.88rem;
+      }
+      code {
+        font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+      }
+      ul.reqs {
+        margin: 0;
+        padding-left: 20px;
+        color: var(--muted);
+      }
+      ul.reqs li {
+        margin-bottom: 8px;
+      }
+      ul.reqs strong {
+        color: var(--text);
+      }
+      .note {
+        font-size: 0.88rem;
+        color: var(--muted);
+        margin-top: 12px;
+      }
+
+      footer {
+        border-top: 1px solid var(--border);
+        padding: 40px 0;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+      footer .links {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+        margin-bottom: 20px;
+      }
+      footer .disclaimer {
+        font-size: 0.82rem;
+        line-height: 1.5;
+        max-width: 720px;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="nav">
+      <div class="nav-inner">
+        <img src="img/logo.svg" alt="" />
+        <span class="name">Grail (DQL) for Grafana</span>
+        <span class="spacer"></span>
+        <nav class="nav-links">
+          <a href="#features">Features</a>
+          <a href="#quickstart">Quick start</a>
+          <a href="https://github.com/discostu105/grafana-grail-datasource">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="wrap">
+          <span class="badge-pill">Community Grafana data source plugin</span>
+          <h1>Query <span class="grad">Dynatrace Grail</span><br />from Grafana with DQL</h1>
+          <p class="lead">
+            Write Dynatrace Query Language — the same syntax you use in the Dynatrace UI — and render metrics, logs,
+            traces, and events as native Grafana panels. Alerts, annotations, and variables included.
+          </p>
+          <div class="cta">
+            <a class="btn btn-primary" href="https://github.com/discostu105/grafana-grail-datasource">View on GitHub</a>
+            <a class="btn btn-secondary" href="https://github.com/discostu105/grafana-grail-datasource/releases"
+              >Releases</a
+            >
+            <a class="btn btn-secondary" href="#quickstart">Quick start</a>
+          </div>
+          <div class="badges">
+            <a href="https://github.com/discostu105/grafana-grail-datasource/releases"
+              ><img
+                src="https://img.shields.io/github/v/release/discostu105/grafana-grail-datasource?sort=semver&label=release"
+                alt="Latest release"
+            /></a>
+            <a href="https://github.com/discostu105/grafana-grail-datasource/blob/main/LICENSE"
+              ><img src="https://img.shields.io/github/license/discostu105/grafana-grail-datasource" alt="License"
+            /></a>
+            <img
+              src="https://img.shields.io/badge/Grafana-%E2%89%A5%2012.3.0-F46800?logo=grafana&logoColor=white"
+              alt="Grafana ≥ 12.3.0"
+            />
+          </div>
+
+          <div class="shot">
+            <img
+              src="img/screenshot-editor.png"
+              alt="Writing DQL against Dynatrace Grail in Grafana Explore — syntax highlighting, query types, and the Builder/Code toggle"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section id="features">
+        <div class="wrap">
+          <h2>What it does</h2>
+          <p class="sub">A full-featured data source, not a thin HTTP wrapper.</p>
+          <div class="grid">
+            <div class="card">
+              <span class="ic">✍️</span>
+              <h3>Write DQL</h3>
+              <p>
+                A Monaco editor with DQL syntax highlighting, one-keystroke formatting, and autocomplete backed by your
+                live Grail schema — or build queries visually with the Builder/Code toggle.
+              </p>
+            </div>
+            <div class="card">
+              <span class="ic">📊</span>
+              <h3>Metrics, logs &amp; tables</h3>
+              <p>
+                Timeseries and table result shapes, real Grail timeframe + interval series, unit and display-name field
+                config from labels, plus a logs view with derived fields, a log-volume histogram, and log-row context.
+              </p>
+            </div>
+            <div class="card">
+              <span class="ic">🔗</span>
+              <h3>Distributed traces</h3>
+              <p>
+                A clickable trace list, full OpenTelemetry-compatible span detail, and trace-to-logs / trace-to-metrics
+                correlation back into Grail.
+              </p>
+            </div>
+            <div class="card">
+              <span class="ic">🧩</span>
+              <h3>Works everywhere</h3>
+              <p>
+                Alert rules, annotations, template/variable queries, and ad-hoc filters — all sharing the same
+                server-side macro expansion, so an alert evaluates over its own window exactly like the panel it came
+                from.
+              </p>
+            </div>
+            <div class="card">
+              <span class="ic">⚙️</span>
+              <h3>Production backend</h3>
+              <p>
+                A Go backend with retry-and-backoff on 429/5xx (honoring Retry-After), a per-instance concurrency cap,
+                request-context cancellation, and Prometheus self-metrics.
+              </p>
+            </div>
+            <div class="card">
+              <span class="ic">🔁</span>
+              <h3>Coming from PromQL or SQL?</h3>
+              <p>
+                DQL is pipeline-based and readable. The README maps common PromQL and SQL patterns to their DQL
+                equivalents to get you productive fast.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section style="background: var(--bg-2)">
+        <div class="wrap">
+          <div class="shot" style="margin-top: 0">
+            <img
+              src="img/screenshot-builder.png"
+              alt="The visual query builder, whose source list is populated from your tenant's own data objects"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section id="quickstart">
+        <div class="wrap">
+          <h2>Quick start</h2>
+          <p class="sub">Install, connect a tenant, and write your first query.</p>
+          <div class="two-col">
+            <div>
+              <h3>Install</h3>
+              <p style="color: var(--muted); margin-top: 0">
+                Once available in the
+                <a href="https://grafana.com/grafana/plugins/">Grafana plugin catalog</a>:
+              </p>
+              <pre><code>grafana-cli plugins install \
+  discostu105-grail-datasource</code></pre>
+              <p class="note">
+                Then restart Grafana and add the data source. For a self-hosted or locally built copy, see
+                <a href="https://github.com/discostu105/grafana-grail-datasource/blob/main/CONTRIBUTING.md"
+                  >CONTRIBUTING.md</a
+                >.
+              </p>
+            </div>
+            <div>
+              <h3>Requirements</h3>
+              <ul class="reqs">
+                <li>
+                  A <strong>Dynatrace platform tenant</strong> — the
+                  <code>https://&lt;env&gt;.apps.dynatrace.com</code> host (not the classic
+                  <code>*.live.dynatrace.com</code> host).
+                </li>
+                <li>
+                  A <strong>platform token</strong> (<code>dt0s16.*</code>) with the scopes for the data you query.
+                </li>
+                <li><strong>Grafana ≥ 12.3.0.</strong></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap">
+        <div class="links">
+          <a href="https://github.com/discostu105/grafana-grail-datasource">GitHub repository</a>
+          <a href="https://github.com/discostu105/grafana-grail-datasource/issues">Issues</a>
+          <a href="https://github.com/discostu105/grafana-grail-datasource/blob/main/README.md">Documentation</a>
+          <a href="https://docs.dynatrace.com/docs/discover-dynatrace/references/dynatrace-query-language"
+            >DQL reference</a
+          >
+        </div>
+        <p class="disclaimer">
+          This is an unofficial, community-maintained plugin. It is <strong>not</strong> affiliated with, endorsed by,
+          or sponsored by Dynatrace LLC. “Dynatrace”, “Grail”, and “DQL” are trademarks of Dynatrace LLC, used here only
+          to describe what the plugin connects to.
+        </p>
+      </div>
+    </footer>
+  </body>
+</html>
