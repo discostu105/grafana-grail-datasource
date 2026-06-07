@@ -37,7 +37,7 @@ jobs:
           cp src/img/screenshot-builder.png _site/img/
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: _site
 
